@@ -348,8 +348,7 @@ class AuthManager {
             console.error('Microsoft Authentication Library (MSAL) not loaded');
             return Promise.reject(new Error('Microsoft Authentication Library (MSAL) not loaded'));
         }
-        
-        try {
+          try {
             // Initialize MSAL application
             this.msalInstance = new msal.PublicClientApplication({
                 auth: {

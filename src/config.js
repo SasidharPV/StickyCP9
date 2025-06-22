@@ -25,10 +25,11 @@ const config = {
     // 1. Go to https://portal.azure.com/#blade/Microsoft_AAD_RegisteredApps/ApplicationsListBlade
     // 2. Register a new application
     // 3. Set redirect URI to your domain (single-page application type)
-    // 4. Add permissions for Microsoft Graph API (Files.ReadWrite.AppFolder, User.Read)
-    microsoft: {
+    // 4. Add permissions for Microsoft Graph API (Files.ReadWrite.AppFolder, User.Read)    microsoft: {
         clientId: 'c4eaf2ef-461a-409a-aff7-f77186e3af86',
-        redirectUri: 'https://sasidharpv.github.io/StickyCP9/auth-callback.html', 
+        redirectUri: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+            ? window.location.origin + '/auth-callback.html'
+            : 'https://sasidharpv.github.io/StickyCP9/auth-callback.html', 
         scopes: ['files.readwrite.appfolder', 'user.read', 'offline_access']
     },
     
