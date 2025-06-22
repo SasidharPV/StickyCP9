@@ -28,7 +28,7 @@ const config = {
     // 4. Add permissions for Microsoft Graph API (Files.ReadWrite.AppFolder, User.Read)
     microsoft: {
         clientId: 'c4eaf2ef-461a-409a-aff7-f77186e3af86',
-        redirectUri: window.location.origin, 
+        redirectUri: 'https://sasidharpv.github.io/StickyCP9/auth-callback.html', 
         scopes: ['files.readwrite.appfolder', 'user.read', 'offline_access']
     },
     
