@@ -1,10 +1,10 @@
 # Simple workflow for deploying a static site to GitHub Pages
 name: Deploy static content to Pages
 
-# Only run this workflow when pushing to the v1 branch
+# Only run this workflow when pushing to the v1 or v2 branch
 on:
   push:
-    branches: ["v1"]
+    branches: ["v1", "v2"]
   workflow_dispatch:
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages

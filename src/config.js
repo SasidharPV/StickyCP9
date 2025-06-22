@@ -1,22 +1,35 @@
 // OAuth Configuration
 const config = {
-    // Development mode - set to true to use local storage only, false to use cloud sync
+    // Development mode - set to false to use real cloud sync
     // When in development mode, the auth buttons will simulate successful authentication
-    developmentMode: true,
+    developmentMode: false, // Set to true for testing without actual OAuth
     
     // Google Drive API credentials
+    // To create your own credentials:
+    // 1. Go to https://console.cloud.google.com/
+    // 2. Create a new project
+    // 3. Navigate to APIs & Services > OAuth consent screen
+    // 4. Configure the consent screen (External type is fine for testing)
+    // 5. Then go to Credentials > Create Credentials > OAuth client ID
+    // 6. Select Web application, add your domain to Authorized JavaScript origins
+    // 7. Add your domain + /auth-callback.html to Authorized redirect URIs
     google: {
-        clientId: 'YOUR_GOOGLE_CLIENT_ID', // Replace with your actual Google OAuth client ID
-        apiKey: 'YOUR_GOOGLE_API_KEY',     // Replace with your actual Google API key
-        scope: 'https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/drive.file',
-        discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest']
+        clientId: '697401323915-g4vdpui443ftvjsj4hfr673frvgu01ch.apps.googleusercontent.com',
+        apiKey: 'AIzaSyBDBjkXSRQNRHYVhZeYI71jZrt7TvWQU-g',
+        scope: 'https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email',
+        discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest', 'https://www.googleapis.com/discovery/v1/apis/oauth2/v2/rest']
     },
     
     // Microsoft OneDrive API credentials
+    // To create your own credentials:
+    // 1. Go to https://portal.azure.com/#blade/Microsoft_AAD_RegisteredApps/ApplicationsListBlade
+    // 2. Register a new application
+    // 3. Set redirect URI to your domain (single-page application type)
+    // 4. Add permissions for Microsoft Graph API (Files.ReadWrite.AppFolder, User.Read)
     microsoft: {
-        clientId: 'YOUR_MICROSOFT_CLIENT_ID', // Replace with your actual Microsoft OAuth client ID
-        redirectUri: window.location.origin, // This should match your redirect URI in Azure portal
-        scopes: ['files.readwrite.appfolder', 'offline_access']
+        clientId: '6f7e7861-8896-4c56-9c2a-b3cd06a02db3',
+        redirectUri: window.location.origin, 
+        scopes: ['files.readwrite.appfolder', 'user.read', 'offline_access']
     },
     
     // GitHub repository info for sync

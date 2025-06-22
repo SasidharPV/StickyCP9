@@ -6,7 +6,15 @@ A sleek, modern sticky notes application that runs in your browser with built-in
 
 Try the application live at [https://SasidharPV.github.io/StickyCP9/](https://SasidharPV.github.io/StickyCP9/)
 
-*Note: It may take a few minutes for the deployed version to become available after the initial setup.*
+*Note: There are two versions of the application:*
+- **v1 Branch**: Simulates cloud sync without actual OAuth authentication
+- **v2 Branch**: Implements real Google Drive and Microsoft OneDrive integration
+
+## New in Version 2
+- Real Google Drive OAuth2 authentication and storage
+- Real Microsoft OneDrive OAuth2 authentication and storage
+- User profile photos from cloud providers
+- Improved error handling for authentication flows
 
 ## Features
 
