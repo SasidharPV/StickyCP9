@@ -48,7 +48,9 @@ echo Process completed. Check above for any errors.
 echo If this is your first push, you may need to authenticate with GitHub.
 echo Visit your v1 branch at: https://github.com/SasidharPV/StickyCP9/tree/v1
 echo.
-echo To deploy your app to GitHub Pages, run the deploy_to_github_pages.bat script.
-echo Once deployed, your app will be available at: https://SasidharPV.github.io/StickyCP9/
+echo IMPORTANT: To enable GitHub Pages, please do these steps:
+echo 1. Go to https://github.com/SasidharPV/StickyCP9/settings/pages
+echo 2. Under "Build and deployment", select "GitHub Actions" as the source
+echo 3. After a few minutes, your site will be available at: https://SasidharPV.github.io/StickyCP9/
 
 pause

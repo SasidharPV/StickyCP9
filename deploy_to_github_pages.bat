@@ -40,8 +40,13 @@ git push origin v1
 
 echo.
 echo Push completed. GitHub Actions should now deploy your site.
-echo Visit your GitHub repository's Actions tab to see the deployment progress.
-echo Once deployment is complete, your site will be available at:
-echo https://SasidharPV.github.io/StickyCP9/
+echo IMPORTANT: To enable GitHub Pages, please do these steps:
+echo 1. Go to https://github.com/SasidharPV/StickyCP9/settings/pages
+echo 2. Under "Build and deployment", select "GitHub Actions" as the source
+echo 3. After the GitHub Action runs successfully, your site will be available at:
+echo    https://SasidharPV.github.io/StickyCP9/
+echo.
+echo You can check the deployment status at:
+echo https://github.com/SasidharPV/StickyCP9/actions
 
 pause
