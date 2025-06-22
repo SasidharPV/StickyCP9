@@ -14,8 +14,8 @@ const config = {
     // 6. Select Web application, add your domain to Authorized JavaScript origins
     // 7. Add your domain + /auth-callback.html to Authorized redirect URIs
     google: {
-        clientId: '697401323915-g4vdpui443ftvjsj4hfr673frvgu01ch.apps.googleusercontent.com',
-        apiKey: 'AIzaSyBDBjkXSRQNRHYVhZeYI71jZrt7TvWQU-g',
+        clientId: '743529461924-difp5a2o44gc3k8lb0u9b32t3926bqko.apps.googleusercontent.com',
+        apiKey: 'AIzaSyAFPUZFhagvc2Nl15if7078GRw0yarWsmg',
         scope: 'https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email',
         discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest', 'https://www.googleapis.com/discovery/v1/apis/oauth2/v2/rest']
     },
@@ -27,7 +27,7 @@ const config = {
     // 3. Set redirect URI to your domain (single-page application type)
     // 4. Add permissions for Microsoft Graph API (Files.ReadWrite.AppFolder, User.Read)
     microsoft: {
-        clientId: '6f7e7861-8896-4c56-9c2a-b3cd06a02db3',
+        clientId: 'c4eaf2ef-461a-409a-aff7-f77186e3af86',
         redirectUri: window.location.origin, 
         scopes: ['files.readwrite.appfolder', 'user.read', 'offline_access']
     },
