@@ -6,6 +6,8 @@ class SyncManager {
         this.isInitialized = false;
         this.lastSyncTime = localStorage.getItem('sticky-cp9-last-sync-time') || null;
         this.developmentMode = config.developmentMode || false;
+        this.FILE_NAME = 'sticky-cp9-notes.json';
+        this.GROUP_FILE_NAME = 'sticky-cp9-groups.json';
         
         // Listen for auth state changes
         document.addEventListener('authStateChanged', this.handleAuthChange.bind(this));
@@ -39,6 +41,11 @@ class SyncManager {
     
     // Initialize Google Drive API
     async initializeGoogleDrive() {
+        if (this.developmentMode) {
+            this.isInitialized = true;
+            return true;
+        }
+        
         try {
             // Load Drive API
             await gapi.client.load('drive', 'v3');
@@ -53,369 +60,747 @@ class SyncManager {
     
     // Initialize OneDrive API
     async initializeOneDrive() {
-        // OneDrive API is accessed directly through fetch with the auth token
-        this.isInitialized = true;
-        console.log('OneDrive API initialized');
-        return true;
-    }
-      // Sync notes to cloud
-    async syncNotes(notes) {
-        if (!authManager.isAuthenticated || !this.isInitialized) {
-            throw new Error('Not authenticated or sync not initialized');
-        }
-        
-        // Check if in development mode
         if (this.developmentMode) {
-            console.log('Development mode: Simulating cloud sync');
-            
-            // Simulate some delay to make it feel real
-            await new Promise(resolve => setTimeout(resolve, 800));
-            
-            this.lastSyncTime = new Date().toISOString();
-            localStorage.setItem('sticky-cp9-last-sync-time', this.lastSyncTime);
-            
-            return {
-                success: true,
-                provider: authManager.provider,
-                timestamp: this.lastSyncTime
-            };
+            this.isInitialized = true;
+            return true;
         }
         
         try {
-            if (authManager.provider === 'google') {
-                await this.syncToGoogleDrive(notes);
-            } else if (authManager.provider === 'microsoft') {
-                await this.syncToOneDrive(notes);
-            }
-            
-            this.lastSyncTime = new Date().toISOString();
-            localStorage.setItem('sticky-cp9-last-sync-time', this.lastSyncTime);
-            
-            return {
-                success: true,
-                provider: authManager.provider,
-                timestamp: this.lastSyncTime
-            };
+            // OneDrive is initialized through the auth process
+            this.isInitialized = true;
+            console.log('Microsoft OneDrive API initialized');
+            return true;
         } catch (error) {
-            console.error(`Error syncing notes to ${authManager.provider}`, error);
-            throw error;
+            console.error('Error initializing OneDrive API', error);
+            return false;
         }
     }
     
-    // Sync notes to Google Drive
+    // Save notes to cloud storage
+    async syncNotes(notes) {
+        if (!this.isInitialized) {
+            throw new Error('Sync manager not initialized');
+        }
+        
+        if (this.developmentMode) {
+            // Simulate cloud sync
+            return this.simulateCloudSync(notes);
+        }
+        
+        // Select provider
+        if (authManager.provider === 'google') {
+            return this.syncToGoogleDrive(notes);
+        } else if (authManager.provider === 'microsoft') {
+            return this.syncToOneDrive(notes);
+        } else {
+            throw new Error('Unknown provider');
+        }
+    }
+    
+    // Sync groups to cloud storage
+    async syncGroups(groups) {
+        if (!this.isInitialized) {
+            throw new Error('Sync manager not initialized');
+        }
+        
+        if (this.developmentMode) {
+            // Simulate cloud sync
+            return this.simulateGroupSync(groups);
+        }
+        
+        // Select provider
+        if (authManager.provider === 'google') {
+            return this.syncGroupsToGoogleDrive(groups);
+        } else if (authManager.provider === 'microsoft') {
+            return this.syncGroupsToOneDrive(groups);
+        } else {
+            throw new Error('Unknown provider');
+        }
+    }
+    
+    // Simulate cloud sync for development mode
+    simulateCloudSync(notes) {
+        console.log('Development mode: Simulating cloud sync');
+        return new Promise((resolve, reject) => {
+            setTimeout(() => {
+                this.lastSyncTime = new Date().toISOString();
+                localStorage.setItem('sticky-cp9-last-sync-time', this.lastSyncTime);
+                console.log('Development mode: Cloud sync simulated successfully');
+                resolve({ success: true });
+            }, 500);
+        });
+    }
+    
+    // Simulate group sync for development mode
+    simulateGroupSync(groups) {
+        console.log('Development mode: Simulating group sync');
+        return new Promise((resolve, reject) => {
+            setTimeout(() => {
+                resolve({ success: true });
+            }, 500);
+        });
+    }
+      // Sync notes to Google Drive
     async syncToGoogleDrive(notes) {
         try {
-            // Check if app folder exists, create if not
-            let folderId = await this.getGoogleDriveFolder();
-            
-            // Prepare notes file content
+            // Create a blob from the JSON data
             const fileContent = JSON.stringify(notes);
-            const fileMetadata = {
-                name: 'sticky-cp9-notes.json',
-                mimeType: 'application/json',
-                parents: folderId ? [folderId] : ['appDataFolder']
-            };
+            const blob = new Blob([fileContent], {type: 'application/json'});
             
-            // Check if file exists
-            const existingFile = await this.getGoogleDriveFile('sticky-cp9-notes.json');
+            // Find or create the file
+            const file = await this.findOrCreateFile(this.FILE_NAME);
             
-            if (existingFile) {
-                // Update existing file
-                await gapi.client.drive.files.update({
-                    fileId: existingFile.id,
-                    media: {
-                        mimeType: 'application/json',
-                        body: fileContent
-                    }
-                });
-                console.log('Notes updated in Google Drive');
-            } else {
-                // Create new file
-                const boundary = '-------314159265358979323846';
-                const delimiter = "\\r\\n--" + boundary + "\\r\\n";
-                const close_delim = "\\r\\n--" + boundary + "--";
-                
-                const multipartRequestBody =
-                    delimiter +
-                    'Content-Type: application/json\\r\\n\\r\\n' +
-                    JSON.stringify(fileMetadata) +
-                    delimiter +
-                    'Content-Type: application/json\\r\\n\\r\\n' +
-                    fileContent +
-                    close_delim;
-                
-                await gapi.client.request({
-                    'path': '/upload/drive/v3/files',
-                    'method': 'POST',
-                    'params': {'uploadType': 'multipart'},
-                    'headers': {
-                        'Content-Type': 'multipart/related; boundary="' + boundary + '"'
-                    },
-                    'body': multipartRequestBody
-                });
-                console.log('Notes created in Google Drive');
+            // Check if the Google API client is loaded and initialized
+            if (!gapi.client.getToken()) {
+                throw new Error('Google API client not authenticated');
             }
             
-            return true;
+            // Use the Google Drive API v3 to upload the file
+            // We'll use the resumable upload protocol for better reliability
+            const metadata = {
+                name: this.FILE_NAME,
+                mimeType: 'application/json'
+            };
+            
+            // Create a form data object for uploading
+            const form = new FormData();
+            form.append('metadata', new Blob([JSON.stringify(metadata)], {type: 'application/json'}));
+            form.append('file', blob);
+            
+            // Use fetch API for the upload
+            const uploadResponse = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${file.id}?uploadType=multipart`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${gapi.auth.getToken().access_token}`
+                },
+                body: form
+            });
+            
+            if (!uploadResponse.ok) {
+                throw new Error(`Google Drive upload failed with status: ${uploadResponse.status}`);
+            }
+            
+            this.lastSyncTime = new Date().toISOString();
+            localStorage.setItem('sticky-cp9-last-sync-time', this.lastSyncTime);
+            
+            console.log('Notes synced to Google Drive successfully');
+            return { success: true, timestamp: this.lastSyncTime };
+            
         } catch (error) {
             console.error('Error syncing to Google Drive', error);
             throw error;
         }
     }
-    
-    // Get Google Drive app folder
-    async getGoogleDriveFolder() {
+      // Sync groups to Google Drive
+    async syncGroupsToGoogleDrive(groups) {
         try {
-            // Check if 'StickyCP9' folder exists
+            // Create a blob from the JSON data
+            const fileContent = JSON.stringify(groups);
+            const blob = new Blob([fileContent], {type: 'application/json'});
+            
+            // Find or create the file
+            const file = await this.findOrCreateFile(this.GROUP_FILE_NAME);
+            
+            // Check if the Google API client is loaded and initialized
+            if (!gapi.client.getToken()) {
+                throw new Error('Google API client not authenticated');
+            }
+            
+            // Use the Google Drive API v3 to upload the file
+            const metadata = {
+                name: this.GROUP_FILE_NAME,
+                mimeType: 'application/json'
+            };
+            
+            // Create a form data object for uploading
+            const form = new FormData();
+            form.append('metadata', new Blob([JSON.stringify(metadata)], {type: 'application/json'}));
+            form.append('file', blob);
+            
+            // Use fetch API for the upload
+            const uploadResponse = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${file.id}?uploadType=multipart`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${gapi.auth.getToken().access_token}`
+                },
+                body: form
+            });
+            
+            if (!uploadResponse.ok) {
+                throw new Error(`Google Drive group upload failed with status: ${uploadResponse.status}`);
+            }
+            
+            console.log('Groups synced to Google Drive successfully');
+            return { success: true };
+            
+        } catch (error) {
+            console.error('Error syncing groups to Google Drive', error);
+            throw error;
+        }
+    }
+      // Find or create a file in Google Drive
+    async findOrCreateFile(fileName) {
+        try {
+            // Check if the Google API client is loaded and initialized
+            if (!gapi.client.getToken()) {
+                throw new Error('Google API client not authenticated');
+            }
+            
+            // Search for file in App Data folder first (preferred location)
+            try {
+                const appDataResponse = await gapi.client.drive.files.list({
+                    q: `name='${fileName}' and trashed=false and spaces='appDataFolder'`,
+                    fields: 'files(id, name)',
+                    spaces: 'appDataFolder'
+                });
+                
+                const appDataFiles = appDataResponse.result.files;
+                
+                if (appDataFiles && appDataFiles.length > 0) {
+                    console.log(`Found file '${fileName}' in App Data folder`);
+                    return appDataFiles[0];
+                }
+            } catch (appDataError) {
+                console.warn('Error searching App Data folder, falling back to regular search', appDataError);
+            }
+            
+            // Search for file in My Drive
             const response = await gapi.client.drive.files.list({
-                q: "name='StickyCP9' and mimeType='application/vnd.google-apps.folder' and trashed=false",
-                spaces: 'drive',
+                q: `name='${fileName}' and trashed=false`,
                 fields: 'files(id, name)'
             });
             
-            const folders = response.result.files;
-            if (folders && folders.length > 0) {
-                return folders[0].id;
-            }
-            
-            // Create folder if not exists
-            const fileMetadata = {
-                name: 'StickyCP9',
-                mimeType: 'application/vnd.google-apps.folder'
-            };
-            
-            const folderResponse = await gapi.client.drive.files.create({
-                resource: fileMetadata,
-                fields: 'id'
-            });
-            
-            return folderResponse.result.id;
-        } catch (error) {
-            console.error('Error getting/creating Google Drive folder', error);
-            return null;
-        }
-    }
-    
-    // Get Google Drive file
-    async getGoogleDriveFile(fileName) {
-        try {
-            const response = await gapi.client.drive.files.list({
-                q: `name='${fileName}' and trashed=false`,
-                spaces: 'drive,appDataFolder',
-                fields: 'files(id, name, modifiedTime)'
-            });
-            
             const files = response.result.files;
+            
             if (files && files.length > 0) {
+                console.log(`Found file '${fileName}' in My Drive`);
                 return files[0];
             }
             
-            return null;
-        } catch (error) {
-            console.error('Error getting Google Drive file', error);
-            return null;
-        }
-    }
-    
-    // Sync notes to OneDrive
-    async syncToOneDrive(notes) {
-        try {
-            // Prepare notes file content
-            const fileContent = JSON.stringify(notes);
+            // Create new file if not found (prefer App Data folder for privacy)
+            const fileMetadata = {
+                name: fileName,
+                mimeType: 'application/json',
+                parents: ['appDataFolder']  // Store in App Data folder for better privacy
+            };
             
-            // Check if StickyCP9 folder exists in app folder
-            let folderId = await this.getOneDriveFolder();
-            
-            // Check if file exists
-            const existingFile = await this.getOneDriveFile('sticky-cp9-notes.json', folderId);
-            
-            if (existingFile) {
-                // Update existing file
-                await fetch(`https://graph.microsoft.com/v1.0/me/drive/items/${existingFile.id}/content`, {
-                    method: 'PUT',
-                    headers: {
-                        'Authorization': `Bearer ${authManager.authToken}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: fileContent
+            try {
+                const createResponse = await gapi.client.drive.files.create({
+                    resource: fileMetadata,
+                    fields: 'id, name'
                 });
-                console.log('Notes updated in OneDrive');
-            } else {
-                // Create new file in the app folder
-                await fetch(`https://graph.microsoft.com/v1.0/me/drive/items/${folderId}/children`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${authManager.authToken}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        name: 'sticky-cp9-notes.json',
-                        file: {},
-                        '@microsoft.graph.conflictBehavior': 'replace'
-                    })
-                }).then(response => response.json())
-                  .then(async file => {
-                      // Upload content
-                      await fetch(`https://graph.microsoft.com/v1.0/me/drive/items/${file.id}/content`, {
-                          method: 'PUT',
-                          headers: {
-                              'Authorization': `Bearer ${authManager.authToken}`,
-                              'Content-Type': 'application/json'
-                          },
-                          body: fileContent
-                      });
-                  });
-                console.log('Notes created in OneDrive');
+                
+                console.log(`Created new file '${fileName}' in App Data folder`);
+                return {
+                    id: createResponse.result.id,
+                    name: createResponse.result.name
+                };
+            } catch (createError) {
+                console.warn('Failed to create file in App Data folder, trying My Drive', createError);
+                
+                // Try creating in My Drive as fallback
+                const regularFileMetadata = {
+                    name: fileName,
+                    mimeType: 'application/json'
+                };
+                
+                const regularCreateResponse = await gapi.client.drive.files.create({
+                    resource: regularFileMetadata,
+                    fields: 'id, name'
+                });
+                
+                console.log(`Created new file '${fileName}' in My Drive`);
+                return {
+                    id: regularCreateResponse.result.id,
+                    name: regularCreateResponse.result.name
+                };
             }
             
-            return true;
+        } catch (error) {
+            console.error('Error finding or creating file in Google Drive', error);
+            throw error;
+        }
+    }
+      // Sync notes to OneDrive using Microsoft Graph API
+    async syncToOneDrive(notes) {
+        try {
+            const fileContent = JSON.stringify(notes);
+            const token = authManager.authToken;
+            
+            if (!token) {
+                throw new Error('No authentication token available');
+            }
+            
+            // Use the AppFolder special folder for app-specific data
+            // This is better for privacy and reduces clutter in user's main drive
+            
+            // First check if file exists 
+            let fileExists = false;
+            let fileId = null;
+            
+            try {
+                const checkResponse = await fetch(`https://graph.microsoft.com/v1.0/me/drive/special/approot:/${this.FILE_NAME}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (checkResponse.ok) {
+                    fileExists = true;
+                    const fileData = await checkResponse.json();
+                    fileId = fileData.id;
+                    console.log(`Found existing file '${this.FILE_NAME}' in OneDrive app folder`);
+                }
+            } catch (e) {
+                console.log('File does not exist in OneDrive app folder, will create new file');
+                fileExists = false;
+            }
+            
+            // Create a blob from the JSON data
+            const blob = new Blob([fileContent], {type: 'application/json'});
+            
+            // Upload file - always use the PUT content approach for simplicity and consistency
+            const response = await fetch(`https://graph.microsoft.com/v1.0/me/drive/special/approot:/${this.FILE_NAME}:/content`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: fileContent
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(`OneDrive sync failed: ${response.status} - ${errorData.error ? errorData.error.message : 'Unknown error'}`);
+            }
+            
+            // Update sync timestamp
+            this.lastSyncTime = new Date().toISOString();
+            localStorage.setItem('sticky-cp9-last-sync-time', this.lastSyncTime);
+            
+            // Update conflict handling metadata if needed
+            const responseData = await response.json();
+            
+            console.log('Notes synced to OneDrive successfully');
+            return { 
+                success: true, 
+                timestamp: this.lastSyncTime,
+                fileId: responseData.id
+            };
+            
         } catch (error) {
             console.error('Error syncing to OneDrive', error);
             throw error;
         }
     }
-    
-    // Get OneDrive app folder
-    async getOneDriveFolder() {
+      // Sync groups to OneDrive using Microsoft Graph API
+    async syncGroupsToOneDrive(groups) {
         try {
-            // Check if 'StickyCP9' folder exists in app folder
-            const response = await fetch('https://graph.microsoft.com/v1.0/me/drive/special/approot/children?$filter=name eq \'StickyCP9\'', {
-                headers: {
-                    'Authorization': `Bearer ${authManager.authToken}`
-                }
-            }).then(res => res.json());
+            const fileContent = JSON.stringify(groups);
+            const token = authManager.authToken;
             
-            if (response.value && response.value.length > 0) {
-                return response.value[0].id;
+            if (!token) {
+                throw new Error('No authentication token available');
             }
             
-            // Create folder if not exists
-            const folderResponse = await fetch('https://graph.microsoft.com/v1.0/me/drive/special/approot/children', {
-                method: 'POST',
+            // Use the AppFolder special folder for app-specific data
+            
+            // First check if file exists
+            let fileExists = false;
+            let fileId = null;
+            
+            try {
+                const checkResponse = await fetch(`https://graph.microsoft.com/v1.0/me/drive/special/approot:/${this.GROUP_FILE_NAME}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (checkResponse.ok) {
+                    fileExists = true;
+                    const fileData = await checkResponse.json();
+                    fileId = fileData.id;
+                    console.log(`Found existing groups file '${this.GROUP_FILE_NAME}' in OneDrive app folder`);
+                }
+            } catch (e) {
+                console.log('Groups file does not exist in OneDrive app folder, will create new file');
+                fileExists = false;
+            }
+            
+            // Create a blob from the JSON data
+            const blob = new Blob([fileContent], {type: 'application/json'});
+            
+            // Upload file - always use the PUT content approach for simplicity
+            const response = await fetch(`https://graph.microsoft.com/v1.0/me/drive/special/approot:/${this.GROUP_FILE_NAME}:/content`, {
+                method: 'PUT',
                 headers: {
-                    'Authorization': `Bearer ${authManager.authToken}`,
+                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({
-                    name: 'StickyCP9',
-                    folder: {},
-                    '@microsoft.graph.conflictBehavior': 'rename'
-                })
-            }).then(res => res.json());
-            
-            return folderResponse.id;
-        } catch (error) {
-            console.error('Error getting/creating OneDrive folder', error);
-            throw error;
-        }
-    }
-    
-    // Get OneDrive file
-    async getOneDriveFile(fileName, folderId) {
-        try {
-            const response = await fetch(`https://graph.microsoft.com/v1.0/me/drive/items/${folderId}/children?$filter=name eq '${fileName}'`, {
-                headers: {
-                    'Authorization': `Bearer ${authManager.authToken}`
-                }
-            }).then(res => res.json());
-            
-            if (response.value && response.value.length > 0) {
-                return response.value[0];
-            }
-            
-            return null;
-        } catch (error) {
-            console.error('Error getting OneDrive file', error);
-            return null;
-        }
-    }
-      // Load notes from cloud
-    async loadNotes() {
-        if (!authManager.isAuthenticated || !this.isInitialized) {
-            throw new Error('Not authenticated or sync not initialized');
-        }
-        
-        // Check if in development mode
-        if (this.developmentMode) {
-            console.log('Development mode: Simulating loading notes from cloud');
-            
-            // Simulate some delay to make it feel real
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            // In development mode, just return the local notes
-            const savedNotes = localStorage.getItem('sticky-cp9-notes');
-            const notes = savedNotes ? JSON.parse(savedNotes) : [];
-            
-            this.lastSyncTime = new Date().toISOString();
-            localStorage.setItem('sticky-cp9-last-sync-time', this.lastSyncTime);
-            
-            return notes;
-        }
-        
-        try {
-            let notes = null;
-            
-            if (authManager.provider === 'google') {
-                notes = await this.loadFromGoogleDrive();
-            } else if (authManager.provider === 'microsoft') {
-                notes = await this.loadFromOneDrive();
-            }
-            
-            if (notes) {
-                this.lastSyncTime = new Date().toISOString();
-                localStorage.setItem('sticky-cp9-last-sync-time', this.lastSyncTime);
-            }
-            
-            return notes;
-        } catch (error) {
-            console.error(`Error loading notes from ${authManager.provider}`, error);
-            throw error;
-        }
-    }
-    
-    // Load notes from Google Drive
-    async loadFromGoogleDrive() {
-        try {
-            const file = await this.getGoogleDriveFile('sticky-cp9-notes.json');
-            if (!file) {
-                return null;
-            }
-            
-            const response = await gapi.client.drive.files.get({
-                fileId: file.id,
-                alt: 'media'
+                body: fileContent
             });
             
-            return JSON.parse(response.body);
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(`OneDrive group sync failed: ${response.status} - ${errorData.error ? errorData.error.message : 'Unknown error'}`);
+            }
+            
+            // Get the response data for metadata
+            const responseData = await response.json();
+            
+            console.log('Groups synced to OneDrive successfully');
+            return { 
+                success: true,
+                fileId: responseData.id
+            };
+            
         } catch (error) {
-            console.error('Error loading notes from Google Drive', error);
-            return null;
+            console.error('Error syncing groups to OneDrive', error);
+            throw error;
         }
     }
     
-    // Load notes from OneDrive
-    async loadFromOneDrive() {
+    // Load notes from cloud storage
+    async loadNotes() {
+        if (!this.isInitialized) {
+            throw new Error('Sync manager not initialized');
+        }
+        
+        if (this.developmentMode) {
+            // Simulate loading from cloud
+            return this.simulateCloudLoad();
+        }
+        
+        // Select provider
+        if (authManager.provider === 'google') {
+            return this.loadFromGoogleDrive();
+        } else if (authManager.provider === 'microsoft') {
+            return this.loadFromOneDrive();
+        } else {
+            throw new Error('Unknown provider');
+        }
+    }
+    
+    // Load groups from cloud storage
+    async loadGroups() {
+        if (!this.isInitialized) {
+            throw new Error('Sync manager not initialized');
+        }
+        
+        if (this.developmentMode) {
+            // Simulate loading from cloud
+            return this.simulateGroupLoad();
+        }
+        
+        // Select provider
+        if (authManager.provider === 'google') {
+            return this.loadGroupsFromGoogleDrive();
+        } else if (authManager.provider === 'microsoft') {
+            return this.loadGroupsFromOneDrive();
+        } else {
+            throw new Error('Unknown provider');
+        }
+    }
+    
+    // Simulate loading from cloud for development mode
+    simulateCloudLoad() {
+        console.log('Development mode: Simulating loading notes from cloud');
+        return Promise.resolve([]);
+    }
+    
+    // Simulate loading groups from cloud for development mode
+    simulateGroupLoad() {
+        console.log('Development mode: Simulating loading groups from cloud');
+        return Promise.resolve([]);
+    }
+      // Load notes from Google Drive
+    async loadFromGoogleDrive() {
         try {
-            const folderId = await this.getOneDriveFolder();
-            const file = await this.getOneDriveFile('sticky-cp9-notes.json', folderId);
-            
-            if (!file) {
-                return null;
+            // Check if the Google API client is loaded and initialized
+            if (!gapi.client.getToken()) {
+                throw new Error('Google API client not authenticated');
             }
             
-            const response = await fetch(`https://graph.microsoft.com/v1.0/me/drive/items/${file.id}/content`, {
-                headers: {
-                    'Authorization': `Bearer ${authManager.authToken}`
-                }
-            }).then(res => res.json());
+            // Try to find the file in App Data folder first (preferred location)
+            let fileId = null;
             
-            return response;
+            try {
+                const appDataResponse = await gapi.client.drive.files.list({
+                    q: `name='${this.FILE_NAME}' and trashed=false`,
+                    fields: 'files(id, name)',
+                    spaces: 'appDataFolder'
+                });
+                
+                const appDataFiles = appDataResponse.result.files;
+                
+                if (appDataFiles && appDataFiles.length > 0) {
+                    console.log(`Found notes file in App Data folder`);
+                    fileId = appDataFiles[0].id;
+                }
+            } catch (appDataError) {
+                console.warn('Error searching App Data folder, falling back to regular search', appDataError);
+            }
+            
+            // If not found in App Data, search in My Drive
+            if (!fileId) {
+                const response = await gapi.client.drive.files.list({
+                    q: `name='${this.FILE_NAME}' and trashed=false`,
+                    fields: 'files(id, name)'
+                });
+                
+                const files = response.result.files;
+                
+                if (!files || files.length === 0) {
+                    console.log('No notes file found on Google Drive');
+                    return [];
+                }
+                
+                fileId = files[0].id;
+            }
+            
+            // Get file content
+            try {
+                const getResponse = await gapi.client.drive.files.get({
+                    fileId: fileId,
+                    alt: 'media'
+                });
+                
+                return JSON.parse(getResponse.body);
+            } catch (getError) {
+                // If we get an error reading the file, try the download URL approach as fallback
+                console.warn('Error reading file directly, trying download URL approach', getError);
+                
+                const metadataResponse = await gapi.client.drive.files.get({
+                    fileId: fileId,
+                    fields: 'webContentLink,downloadUrl'
+                });
+                
+                // Use fetch to download the file content
+                const downloadResponse = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+                    headers: {
+                        'Authorization': `Bearer ${gapi.auth.getToken().access_token}`
+                    }
+                });
+                
+                if (!downloadResponse.ok) {
+                    throw new Error(`Failed to download file: ${downloadResponse.status}`);
+                }
+                
+                const fileContent = await downloadResponse.json();
+                return fileContent;
+            }
+            
+        } catch (error) {
+            console.error('Error loading notes from Google Drive', error);
+            // Return empty array on error as a fallback
+            return [];
+        }
+    }
+      // Load groups from Google Drive
+    async loadGroupsFromGoogleDrive() {
+        try {
+            // Check if the Google API client is loaded and initialized
+            if (!gapi.client.getToken()) {
+                throw new Error('Google API client not authenticated');
+            }
+            
+            // Try to find the file in App Data folder first (preferred location)
+            let fileId = null;
+            
+            try {
+                const appDataResponse = await gapi.client.drive.files.list({
+                    q: `name='${this.GROUP_FILE_NAME}' and trashed=false`,
+                    fields: 'files(id, name)',
+                    spaces: 'appDataFolder'
+                });
+                
+                const appDataFiles = appDataResponse.result.files;
+                
+                if (appDataFiles && appDataFiles.length > 0) {
+                    console.log(`Found groups file in App Data folder`);
+                    fileId = appDataFiles[0].id;
+                }
+            } catch (appDataError) {
+                console.warn('Error searching App Data folder, falling back to regular search', appDataError);
+            }
+            
+            // If not found in App Data, search in My Drive
+            if (!fileId) {
+                const response = await gapi.client.drive.files.list({
+                    q: `name='${this.GROUP_FILE_NAME}' and trashed=false`,
+                    fields: 'files(id, name)'
+                });
+                
+                const files = response.result.files;
+                
+                if (!files || files.length === 0) {
+                    console.log('No groups file found on Google Drive');
+                    return [];
+                }
+                
+                fileId = files[0].id;
+            }
+            
+            // Get file content
+            try {
+                const getResponse = await gapi.client.drive.files.get({
+                    fileId: fileId,
+                    alt: 'media'
+                });
+                
+                return JSON.parse(getResponse.body);
+            } catch (getError) {
+                // If we get an error reading the file, try the download URL approach as fallback
+                console.warn('Error reading groups file directly, trying download URL approach', getError);
+                
+                // Use fetch to download the file content
+                const downloadResponse = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+                    headers: {
+                        'Authorization': `Bearer ${gapi.auth.getToken().access_token}`
+                    }
+                });
+                
+                if (!downloadResponse.ok) {
+                    throw new Error(`Failed to download groups file: ${downloadResponse.status}`);
+                }
+                
+                const fileContent = await downloadResponse.json();
+                return fileContent;
+            }
+            
+        } catch (error) {
+            console.error('Error loading groups from Google Drive', error);
+            // Return empty array on error as a fallback
+            return [];
+        }
+    }
+      // Load notes from OneDrive
+    async loadFromOneDrive() {
+        try {
+            const token = authManager.authToken;
+            
+            if (!token) {
+                throw new Error('No authentication token available');
+            }
+            
+            // Try to get file from AppRoot special folder
+            const response = await fetch(`https://graph.microsoft.com/v1.0/me/drive/special/approot:/${this.FILE_NAME}:/content`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            
+            if (!response.ok) {
+                if (response.status === 404) {
+                    console.log('No notes file found on OneDrive');
+                    return [];
+                }
+                
+                // Try to get additional error information
+                try {
+                    const errorData = await response.json();
+                    throw new Error(`OneDrive load failed: ${response.status} - ${errorData.error ? errorData.error.message : 'Unknown error'}`);
+                } catch (jsonError) {
+                    throw new Error(`OneDrive load failed with status: ${response.status}`);
+                }
+            }
+            
+            try {
+                const data = await response.json();
+                return data;
+            } catch (parseError) {
+                console.error('Error parsing OneDrive response as JSON', parseError);
+                
+                // Try to get the content as text and parse it
+                const textResponse = await fetch(`https://graph.microsoft.com/v1.0/me/drive/special/approot:/${this.FILE_NAME}:/content`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (!textResponse.ok) {
+                    throw new Error('Failed to retrieve notes data from OneDrive');
+                }
+                
+                const textContent = await textResponse.text();
+                try {
+                    return JSON.parse(textContent);
+                } catch (textParseError) {
+                    console.error('Failed to parse text content as JSON', textParseError);
+                    return [];
+                }
+            }
+            
         } catch (error) {
             console.error('Error loading notes from OneDrive', error);
-            return null;
+            // Return empty array on error rather than throwing
+            return [];
+        }
+    }
+      // Load groups from OneDrive
+    async loadGroupsFromOneDrive() {
+        try {
+            const token = authManager.authToken;
+            
+            if (!token) {
+                throw new Error('No authentication token available');
+            }
+            
+            // Try to get file from AppRoot special folder
+            const response = await fetch(`https://graph.microsoft.com/v1.0/me/drive/special/approot:/${this.GROUP_FILE_NAME}:/content`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            
+            if (!response.ok) {
+                if (response.status === 404) {
+                    console.log('No groups file found on OneDrive');
+                    return [];
+                }
+                
+                // Try to get additional error information
+                try {
+                    const errorData = await response.json();
+                    throw new Error(`OneDrive groups load failed: ${response.status} - ${errorData.error ? errorData.error.message : 'Unknown error'}`);
+                } catch (jsonError) {
+                    throw new Error(`OneDrive groups load failed with status: ${response.status}`);
+                }
+            }
+            
+            try {
+                const data = await response.json();
+                return data;
+            } catch (parseError) {
+                console.error('Error parsing OneDrive groups response as JSON', parseError);
+                
+                // Try to get the content as text and parse it
+                const textResponse = await fetch(`https://graph.microsoft.com/v1.0/me/drive/special/approot:/${this.GROUP_FILE_NAME}:/content`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (!textResponse.ok) {
+                    throw new Error('Failed to retrieve groups data from OneDrive');
+                }
+                
+                const textContent = await textResponse.text();
+                try {
+                    return JSON.parse(textContent);
+                } catch (textParseError) {
+                    console.error('Failed to parse groups text content as JSON', textParseError);
+                    return [];
+                }
+            }
+            
+        } catch (error) {
+            console.error('Error loading groups from OneDrive', error);
+            // Return empty array on error rather than throwing
+            return [];
         }
     }
 }
 
-// Create global sync manager instance
+// Create and export sync manager instance
 const syncManager = new SyncManager();

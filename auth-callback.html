@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authentication Callback - StickyCP9</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            text-align: center;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            padding: 30px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #4e54c8;
+            margin-bottom: 20px;
+        }
+        p {
+            line-height: 1.6;
+            color: #555;
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            margin: 20px auto;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4e54c8;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Authentication in Progress</h1>
+        <div class="spinner"></div>
+        <p>Please wait while we complete your sign-in...</p>
+        <p>This window will close automatically.</p>
+    </div>
+    
+    <script>
+        // Parse the URL hash fragment for auth response
+        function parseHashParams(hash) {
+            if (!hash || hash.length === 0) return {};
+            
+            const hashParams = {};
+            const hashParts = hash.substring(1).split('&');
+            
+            for (let i = 0; i < hashParts.length; i++) {
+                const pair = hashParts[i].split('=');
+                hashParams[decodeURIComponent(pair[0])] = decodeURIComponent(pair[1] || '');
+            }
+            
+            return hashParams;
+        }
+        
+        // Function to run when the page loads
+        window.onload = function() {
+            try {
+                // Get the hash fragment from the URL
+                const hashParams = parseHashParams(window.location.hash);
+                
+                // Check if we have an access token
+                if (hashParams.access_token) {
+                    // Determine the provider from state parameter
+                    let provider = 'unknown';
+                    if (hashParams.state && hashParams.state.startsWith('google')) {
+                        provider = 'google';
+                    } else if (hashParams.state && hashParams.state.startsWith('microsoft')) {
+                        provider = 'microsoft';
+                    }
+                    
+                    // Send the token back to the main window
+                    window.opener.postMessage({
+                        type: 'auth-callback',
+                        provider: provider,
+                        token: hashParams.access_token
+                    }, window.location.origin);
+                    
+                    // Close this popup window after a short delay to ensure the message is processed
+                    setTimeout(() => {
+                        window.close();
+                    }, 500);
+                } else if (hashParams.error) {
+                    // Report the error back to the main window
+                    window.opener.postMessage({
+                        type: 'auth-error',
+                        error: hashParams.error_description || hashParams.error
+                    }, window.location.origin);
+                    
+                    // Close this popup window after a short delay
+                    setTimeout(() => {
+                        window.close();
+                    }, 1000);
+                } else {
+                    // No token or error found
+                    document.querySelector('.container').innerHTML = `
+                        <h1>Authentication Error</h1>
+                        <p>No authentication response was detected. Please try signing in again.</p>
+                        <button onclick="window.close()">Close Window</button>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error processing authentication callback', error);
+                document.querySelector('.container').innerHTML = `
+                    <h1>Authentication Error</h1>
+                    <p>An error occurred during authentication: ${error.message}</p>
+                    <button onclick="window.close()">Close Window</button>
+                `;
+            }
+        };
+    </script>
+        <h1>StickyCP9 Authentication</h1>
+        <p>Authentication process completed.</p>
+        <p>Redirecting back to the application...</p>
+        <div class="spinner"></div>
+    </div>
+
+    <script>
+        // Process authentication callback parameters
+        function processCallback() {
+            const params = new URLSearchParams(window.location.search);
+            const hash = window.location.hash;
+            
+            // Process OAuth callback (both Google and Microsoft return tokens in hash fragment)
+            if (hash && hash.includes('access_token')) {
+                const hashParams = new URLSearchParams(hash.substring(1));
+                const token = hashParams.get('access_token');
+                const state = hashParams.get('state');
+                
+                // Determine provider based on state
+                const provider = state && state.includes('microsoft') ? 'microsoft' : 'google';
+                
+                window.opener.postMessage({
+                    type: 'auth-callback',
+                    provider: provider,
+                    token: token
+                }, window.location.origin);
+                
+                window.close();
+                return;
+            }
+            
+            // Handle error
+            const error = params.get('error');
+            if (error) {
+                window.opener.postMessage({
+                    type: 'auth-error',
+                    error: error
+                }, window.location.origin);
+                window.close();
+                return;
+            }
+            
+            // If no parameters, redirect to main page
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 2000);
+        }
+        
+        // Run on load
+        window.addEventListener('load', processCallback);
+    </script>
+</body>
+</html>
