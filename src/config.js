@@ -19,13 +19,13 @@ const config = {
         scope: 'https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email',
         discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest', 'https://www.googleapis.com/discovery/v1/apis/oauth2/v2/rest']
     },
-    
-    // Microsoft OneDrive API credentials
+      // Microsoft OneDrive API credentials
     // To create your own credentials:
     // 1. Go to https://portal.azure.com/#blade/Microsoft_AAD_RegisteredApps/ApplicationsListBlade
     // 2. Register a new application
     // 3. Set redirect URI to your domain (single-page application type)
-    // 4. Add permissions for Microsoft Graph API (Files.ReadWrite.AppFolder, User.Read)    microsoft: {
+    // 4. Add permissions for Microsoft Graph API (Files.ReadWrite.AppFolder, User.Read)
+    microsoft: {
         clientId: 'c4eaf2ef-461a-409a-aff7-f77186e3af86',
         redirectUri: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
             ? window.location.origin + '/auth-callback.html'
