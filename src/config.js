@@ -4,6 +4,13 @@ const config = {
     // When in development mode, the auth buttons will simulate successful authentication
     developmentMode: false, // Set to true for testing without actual OAuth
     
+    // Multi-account support settings
+    multiAccount: {
+        enabled: true, // Enable switching between multiple accounts
+        maxAccounts: 5, // Maximum number of accounts to remember
+        autoSelectLast: true // Automatically select the last used account on startup
+    },
+    
     // Google Drive API credentials
     // To create your own credentials:
     // 1. Go to https://console.cloud.google.com/

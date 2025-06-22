@@ -1148,7 +1148,140 @@ body.dark-theme #offline-toggle.active {
     font-size: 24px;
 }
 
-/* Responsive styles */
+/* Account Switcher Styles */
+.account-switcher-dropdown {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+.account-item {
+    transition: all 0.2s ease !important;
+}
+
+.account-item:hover {
+    background-color: #f5f5f5 !important;
+}
+
+.account-item:last-child {
+    border-bottom: none !important;
+}
+
+.add-account-item:hover {
+    background-color: #f0f7ff !important;
+}
+
+.remove-account-btn:hover {
+    color: #f44336 !important;
+    background-color: #ffebee !important;
+    border-radius: 3px !important;
+}
+
+.user-btn {
+    position: relative !important;
+}
+
+.user-btn .dropdown-arrow {
+    transition: transform 0.2s ease;
+}
+
+.user-btn:hover .dropdown-arrow {
+    transform: rotate(180deg);
+}
+
+/* Toast styles for account switching */
+.toast-success {
+    background-color: #4CAF50 !important;
+    color: white !important;
+}
+
+.toast-warning {
+    background-color: #FF9800 !important;
+    color: white !important;
+}
+
+.toast-error {
+    background-color: #f44336 !important;
+    color: white !important;
+}
+
+/* Dark theme adjustments for account switcher */
+body.dark-theme .account-switcher-dropdown {
+    background: var(--dialog-bg) !important;
+    border-color: var(--dialog-border) !important;
+    color: var(--dialog-text) !important;
+}
+
+body.dark-theme .account-item {
+    border-bottom-color: #444 !important;
+    color: var(--dialog-text) !important;
+}
+
+body.dark-theme .account-item:hover {
+    background-color: #333 !important;
+}
+
+body.dark-theme .add-account-item {
+    color: #6c7ae0 !important;
+}
+
+body.dark-theme .add-account-item:hover {
+    background-color: #2a2a3e !important;
+}
+
+body.dark-theme .remove-account-btn:hover {
+    background-color: #4a2c2c !important;
+    color: #ff6b6b !important;
+}
+
+/* Multi-account indicator */
+.multi-account-indicator {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 12px;
+    height: 12px;
+    background: #4CAF50;
+    border: 2px solid white;
+    border-radius: 50%;
+    font-size: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+}
+
+body.dark-theme .multi-account-indicator {
+    border-color: var(--toolbar-bg);
+}
+
+/* Animation for account switching */
+@keyframes accountSwitch {
+    0% { opacity: 0.7; transform: scale(0.95); }
+    50% { opacity: 1; transform: scale(1.05); }
+    100% { opacity: 1; transform: scale(1); }
+}
+
+.account-switching {
+    animation: accountSwitch 0.3s ease-out;
+}
+
+/* Responsive adjustments for mobile */
+@media (max-width: 768px) {
+    .account-switcher-dropdown {
+        min-width: 200px !important;
+        max-width: calc(100vw - 40px) !important;
+    }
+    
+    .account-item {
+        padding: 10px 12px !important;
+    }
+    
+    .account-item img {
+        width: 28px !important;
+        height: 28px !important;
+    }
+}
+
 @media (max-width: 1400px) {
     .group, .add-group-btn {
         flex: 0 1 calc(33.33% - 20px);

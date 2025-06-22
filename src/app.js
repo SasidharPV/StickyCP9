@@ -157,4 +157,22 @@ document.addEventListener('DOMContentLoaded', function() {
             groupId: 'default'
         });
     }
+    
+    // Initialize multi-account functionality if enabled
+    if (config.multiAccount?.enabled && authManager.multiAccountEnabled) {
+        // Update UI to show account switcher if user is authenticated
+        authManager.updateAccountSwitcher();
+        
+        // Add multi-account indicator if there are saved accounts
+        if (authManager.savedAccounts && authManager.savedAccounts.length > 1) {
+            const userBtn = document.getElementById('user-profile');
+            if (userBtn && !userBtn.querySelector('.multi-account-indicator')) {
+                const indicator = document.createElement('div');
+                indicator.className = 'multi-account-indicator';
+                indicator.textContent = authManager.savedAccounts.length;
+                indicator.title = `${authManager.savedAccounts.length} accounts available`;
+                userBtn.appendChild(indicator);
+            }
+        }
+    }
 });
