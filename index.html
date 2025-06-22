@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StickyCP9 - Modern Sticky Notes</title>
+    <link rel="stylesheet" href="src/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Google API Client Library -->
+    <script src="https://apis.google.com/js/api.js"></script>
+    <script src="https://accounts.google.com/gsi/client"></script>
+    <!-- Microsoft Authentication Library -->
+    <script src="https://alcdn.msauth.net/browser/2.28.0/js/msal-browser.min.js"></script>
+</head>
+<body>
+    <!-- App content will be hidden until sign-in or offline mode is selected -->
+    <div class="app-content">
+        <div class="app-container">
+            <div class="toolbar">
+                <div class="app-title">StickyCP9 Notes</div>
+                <div class="toolbar-actions">
+                    <button id="theme-toggle" class="btn secondary" title="Toggle Dark/Light Theme"><i class="fas fa-moon"></i></button>
+                    <button id="sync-button" class="btn secondary" title="Sync with Cloud"><i class="fas fa-cloud"></i></button>                    <button id="offline-toggle" class="btn secondary" title="Toggle Offline Mode"><i class="fas fa-wifi"></i></button>
+                    <button id="user-profile" class="btn secondary user-btn" title="User Profile" style="display: none;">
+                        <img src="" alt="User" id="user-avatar" class="user-avatar">
+                    </button>
+                </div>            </div><div id="notes-container">
+                <div class="groups-container" id="groups-container">
+                    <!-- Groups will be added here dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>    <!-- Load configuration first -->
+    <script src="src/config.js"></script>
+    <!-- Then load authentication modules -->
+    <script src="src/auth.js"></script>
+    <!-- Load sync module -->
+    <script src="src/sync.js"></script>
+    <!-- Load development mode banner -->
+    <script src="src/dev-mode.js"></script>
+    <!-- Load sign-in module -->
+    <script src="src/sign-in.js"></script>
+    <!-- Load module files -->
+    <script src="src/modules/noteManager.js"></script>
+    <script src="src/modules/groupManager.js"></script>
+    <script src="src/modules/uiManager.js"></script>
+    <script src="src/modules/appState.js"></script>
+    <script src="src/modules/dialogManager.js"></script>
+    <!-- Finally load the main app -->
+    <script src="src/app.js"></script>
+</body>
+</html>

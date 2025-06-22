@@ -1,0 +1,3 @@
+@echo off
+echo Opening StickyCP9 Sticky Notes...
+start "" "index.html"

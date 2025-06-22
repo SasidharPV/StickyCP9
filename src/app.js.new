@@ -1,0 +1,862 @@
+// StickyCP9 - Modern Sticky Notes with Copy Functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const notesContainer = document.getElementById('notes-container');
+    const groupsContainer = document.getElementById('groups-container');
+    const themeToggleBtn = document.getElementById('theme-toggle');
+    const syncBtn = document.getElementById('sync-button');
+    const userProfileBtn = document.getElementById('user-profile');
+    const offlineToggleBtn = document.getElementById('offline-toggle');
+    const addGroupBtn = document.getElementById('add-group-btn');
+    
+    // State to store notes and groups
+    let notes = loadNotes();
+    let groups = loadGroups();
+    
+    // Application state
+    const appState = {
+        theme: localStorage.getItem('sticky-cp9-theme') || 'light',
+        synced: false,
+        syncProvider: localStorage.getItem('sticky-cp9-sync-provider') || null,
+        lastSyncTime: localStorage.getItem('sticky-cp9-last-sync-time') || null,
+        offlineMode: localStorage.getItem('sticky-cp9-offline-mode') === 'true',
+        draggedNote: null
+    };
+    
+    // Initialize theme
+    if (appState.theme === 'dark') {
+        document.body.classList.add('dark-theme');
+        themeToggleBtn.innerHTML = '<i class="fas fa-sun"></i>';
+    }
+    
+    // Initialize offline mode indicator
+    updateOfflineModeUI();
+    
+    // Initialize notes from localStorage
+    function loadNotes() {
+        const savedNotes = localStorage.getItem('sticky-cp9-notes');
+        return savedNotes ? JSON.parse(savedNotes) : [];
+    }
+    
+    // Initialize groups from localStorage
+    function loadGroups() {
+        const savedGroups = localStorage.getItem('sticky-cp9-groups');
+        if (savedGroups) {
+            return JSON.parse(savedGroups);
+        } else {
+            // Create a default group if none exist
+            const defaultGroup = {
+                id: 'default',
+                title: 'My Notes',
+                order: 0
+            };
+            return [defaultGroup];
+        }
+    }
+    
+    // Save notes to localStorage
+    function saveNotes() {
+        localStorage.setItem('sticky-cp9-notes', JSON.stringify(notes));
+        
+        // Auto-sync to cloud if authenticated and not in offline mode
+        if (authManager.isAuthenticated && syncManager.isInitialized && !appState.offlineMode) {
+            syncManager.syncNotes(notes)
+                .then(() => {
+                    console.log(`Notes auto-synced to ${authManager.provider}`);
+                })
+                .catch(error => {
+                    console.error('Auto-sync failed', error);
+                });
+        }
+    }
+    
+    // Save groups to localStorage
+    function saveGroups() {
+        localStorage.setItem('sticky-cp9-groups', JSON.stringify(groups));
+        
+        // Also sync if authenticated
+        if (authManager.isAuthenticated && syncManager.isInitialized && !appState.offlineMode) {
+            // Note: You would need to extend your syncManager to handle groups
+            if (syncManager.syncGroups) {
+                syncManager.syncGroups(groups)
+                    .then(() => {
+                        console.log('Groups auto-synced');
+                    })
+                    .catch(error => {
+                        console.error('Groups sync failed', error);
+                    });
+            }
+        }
+    }
+    
+    // Listen for authentication state changes
+    document.addEventListener('authStateChanged', handleAuthStateChange);
+    
+    // Listen for offline mode changes
+    document.addEventListener('offlineModeChanged', (event) => {
+        const { offlineMode } = event.detail;
+        appState.offlineMode = offlineMode;
+        updateOfflineModeUI();
+    });
+    
+    // Update offline mode UI based on current state
+    function updateOfflineModeUI() {
+        if (appState.offlineMode) {
+            offlineToggleBtn.classList.add('active');
+            offlineToggleBtn.innerHTML = '<i class="fas fa-plane"></i>';
+            offlineToggleBtn.setAttribute('title', 'Offline Mode (On) - Click to Go Online');
+            document.querySelector('.app-title').innerHTML = 'StickyCP9 Notes <span class="offline-indicator"><i class="fas fa-plane"></i> Offline</span>';
+            
+            // Disable sync button in offline mode
+            syncBtn.disabled = true;
+            syncBtn.classList.add('disabled');
+        } else {
+            offlineToggleBtn.classList.remove('active');
+            offlineToggleBtn.innerHTML = '<i class="fas fa-wifi"></i>';
+            offlineToggleBtn.setAttribute('title', 'Online Mode - Click to Go Offline');
+            document.querySelector('.app-title').innerHTML = 'StickyCP9 Notes';
+            
+            // Enable sync button in online mode
+            syncBtn.disabled = false;
+            syncBtn.classList.remove('disabled');
+        }
+    }
+    
+    // Toggle offline mode
+    function toggleOfflineMode() {
+        appState.offlineMode = !appState.offlineMode;
+        localStorage.setItem('sticky-cp9-offline-mode', appState.offlineMode);
+        
+        updateOfflineModeUI();
+        
+        if (appState.offlineMode) {
+            // Switching to offline mode
+            showToast('Offline mode enabled. Changes will not be synced to cloud.');
+            
+            // Disable auto-sync
+            if (authManager.isAuthenticated) {
+                showToast('You are still signed in, but changes will not be synced.');
+            }
+        } else {
+            // Switching to online mode
+            showToast('Online mode enabled.');
+            
+            // If authenticated, offer to sync notes
+            if (authManager.isAuthenticated && notes.length > 0) {
+                showConfirmDialog(
+                    'Sync Notes',
+                    'Do you want to sync your notes with the cloud?',
+                    () => {
+                        syncBtn.click(); // Trigger sync button click
+                    }
+                );
+            } else if (!authManager.isAuthenticated) {
+                showToast('Sign in to enable cloud sync.');
+            }
+        }
+    }
+    
+    function handleAuthStateChange(event) {
+        const { isAuthenticated, provider, userProfile } = event.detail;
+        
+        if (isAuthenticated && provider) {
+            // Update UI to show authenticated state
+            showToast(`Signed in with ${provider === 'google' ? 'Google' : 'Microsoft'}`);
+            
+            // Try to load notes from cloud
+            syncManager.loadNotes()
+                .then(cloudNotes => {
+                    if (cloudNotes && cloudNotes.length > 0) {
+                        // Merge cloud notes with local notes
+                        mergeNotes(cloudNotes);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading notes from cloud', error);
+                    showToast('Failed to load notes from cloud. Using local notes.');
+                });
+        } else if (event.detail.signedOut) {
+            // User signed out
+            showToast('Signed out successfully');
+        }
+    }
+    
+    // Create a new note
+    function createNote(noteData = {}) {
+        const note = {
+            id: noteData.id || generateId(),
+            title: noteData.title || 'Untitled',
+            content: noteData.content || '',
+            color: noteData.color || 'yellow',
+            groupId: noteData.groupId || 'default', // Default group if none specified
+            created: noteData.created || getCurrentDateTime(),
+            lastEdited: getCurrentDateTime()
+        };
+        
+        notes.push(note);
+        saveNotes();
+        renderGroups(); // Render groups which includes rendering notes
+        return note;
+    }
+    
+    // Delete a note
+    function deleteNote(noteId) {
+        notes = notes.filter(note => note.id !== noteId);
+        saveNotes();
+        renderGroups(); // Render groups which includes rendering notes
+    }
+    
+    // Update a note
+    function updateNote(noteId, updates) {
+        const noteIndex = notes.findIndex(note => note.id === noteId);
+        if (noteIndex !== -1) {
+            notes[noteIndex] = { ...notes[noteIndex], ...updates, lastEdited: getCurrentDateTime() };
+            saveNotes();
+        }
+    }
+    
+    // Copy note content to clipboard    function copyNoteContent(noteId) {
+        const note = notes.find(note => note.id === noteId);
+        if (note) {
+            // Make sure we're copying the content, not the title
+            const contentToCopy = note.content || '';
+            navigator.clipboard.writeText(contentToCopy)
+                .then(() => {
+                    showToast('Note content copied to clipboard');
+                    console.log('Copied content:', contentToCopy);
+                })
+                .catch(err => {
+                    console.error('Failed to copy note content', err);
+                    showToast('Failed to copy note content');
+                });
+        } else {
+            console.error('Note not found with ID:', noteId);
+        }
+    }
+    
+    // Create a new group
+    function createGroup(groupData = {}) {
+        const group = {
+            id: groupData.id || generateId(),
+            title: groupData.title || 'New Group',
+            order: groupData.order || groups.length
+        };
+        
+        groups.push(group);
+        saveGroups();
+        renderGroups();
+        return group;
+    }
+    
+    // Delete a group and move its notes to the default group
+    function deleteGroup(groupId) {
+        // Make sure we're not deleting the default group
+        if (groupId === 'default') {
+            showToast("Cannot delete the default group.");
+            return;
+        }
+        
+        // Move all notes from this group to the default group
+        notes.forEach(note => {
+            if (note.groupId === groupId) {
+                note.groupId = 'default';
+            }
+        });
+        
+        // Remove the group
+        groups = groups.filter(group => group.id !== groupId);
+        saveGroups();
+        saveNotes();
+        renderGroups();
+    }
+    
+    // Update a group
+    function updateGroup(groupId, updates) {
+        const groupIndex = groups.findIndex(group => group.id === groupId);
+        if (groupIndex !== -1) {
+            groups[groupIndex] = { ...groups[groupIndex], ...updates };
+            saveGroups();
+            renderGroups();
+        }
+    }
+    
+    // Render all groups with their notes
+    function renderGroups() {
+        groupsContainer.innerHTML = '';
+        
+        // Sort groups by their order
+        const sortedGroups = [...groups].sort((a, b) => a.order - b.order);
+        
+        sortedGroups.forEach(group => {
+            const groupElement = document.createElement('div');
+            groupElement.className = 'group';
+            groupElement.dataset.id = group.id;
+            
+            groupElement.innerHTML = `
+                <div class="group-header">
+                    <div class="group-title" contenteditable="true">${group.title}</div>
+                    <div class="group-actions">
+                        ${group.id !== 'default' ? 
+                            `<button class="btn action delete-group-btn" title="Delete Group">
+                                <i class="fas fa-trash"></i>
+                            </button>` : ''}
+                    </div>
+                </div>
+                <div class="group-notes" data-group-id="${group.id}"></div>
+                <button class="btn primary add-note-to-group" data-group-id="${group.id}">
+                    <i class="fas fa-plus"></i> Add Note
+                </button>
+            `;
+            
+            groupsContainer.appendChild(groupElement);
+            
+            // Add event listeners to the group
+            const groupTitle = groupElement.querySelector('.group-title');
+            groupTitle.addEventListener('blur', e => {
+                const newTitle = e.target.textContent.trim();
+                if (newTitle && newTitle !== group.title) {
+                    updateGroup(group.id, { title: newTitle });
+                } else {
+                    e.target.textContent = group.title;
+                }
+            });
+            
+            groupTitle.addEventListener('keydown', e => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    e.target.blur();
+                }
+            });
+            
+            const deleteGroupBtn = groupElement.querySelector('.delete-group-btn');
+            if (deleteGroupBtn) {
+                deleteGroupBtn.addEventListener('click', () => {
+                    showConfirmDialog(
+                        'Delete Group', 
+                        `Are you sure you want to delete "${group.title}"? All notes will be moved to the default group.`,
+                        () => deleteGroup(group.id)
+                    );
+                });
+            }
+            
+            // Add button to create new notes in this group
+            const addNoteBtn = groupElement.querySelector('.add-note-to-group');
+            addNoteBtn.addEventListener('click', () => {
+                createNote({ groupId: group.id });
+            });
+            
+            // Set up drag and drop for this group
+            const notesContainer = groupElement.querySelector('.group-notes');
+            
+            // When dragging over this group
+            notesContainer.addEventListener('dragover', e => {
+                e.preventDefault();
+                notesContainer.classList.add('drag-over');
+            });
+            
+            // When leaving this group
+            notesContainer.addEventListener('dragleave', e => {
+                notesContainer.classList.remove('drag-over');
+            });
+            
+            // When dropping a note onto this group
+            notesContainer.addEventListener('drop', e => {
+                e.preventDefault();
+                notesContainer.classList.remove('drag-over');
+                
+                const noteId = appState.draggedNote;
+                if (noteId) {
+                    // Move the note to this group
+                    const noteIndex = notes.findIndex(note => note.id === noteId);
+                    if (noteIndex !== -1) {
+                        notes[noteIndex].groupId = group.id;
+                        saveNotes();
+                        renderGroups(); // Re-render all groups
+                        showToast(`Note moved to "${group.title}"`);
+                        appState.draggedNote = null;
+                    }
+                }
+            });
+        });
+        
+        // Add "Add Group" button
+        const addGroupElement = document.createElement('button');
+        addGroupElement.className = 'add-group-btn';
+        addGroupElement.innerHTML = '<i class="fas fa-plus"></i>';
+        addGroupElement.title = 'Add New Group';
+        addGroupElement.addEventListener('click', () => {
+            createGroup();
+        });
+        
+        groupsContainer.appendChild(addGroupElement);
+        
+        // Now render all notes
+        renderNotes();
+    }
+    
+    // Render all notes
+    function renderNotes() {
+        // Clear any existing "empty" classes
+        document.querySelectorAll('.group-notes').forEach(container => {
+            container.classList.remove('empty');
+        });
+        
+        // Group notes by groupId
+        const notesByGroup = {};
+        notes.forEach(note => {
+            const groupId = note.groupId || 'default';
+            if (!notesByGroup[groupId]) {
+                notesByGroup[groupId] = [];
+            }
+            notesByGroup[groupId].push(note);
+        });
+        
+        // Clear all group note containers
+        document.querySelectorAll('.group-notes').forEach(container => {
+            container.innerHTML = '';
+        });
+        
+        // Add notes to their respective groups
+        for (const [groupId, groupNotes] of Object.entries(notesByGroup)) {
+            const groupNotesContainer = document.querySelector(`.group-notes[data-group-id="${groupId}"]`);
+            
+            if (groupNotesContainer) {
+                if (groupNotes.length === 0) {
+                    groupNotesContainer.classList.add('empty');
+                }
+                
+                groupNotes.forEach(note => {
+                    const noteElement = document.createElement('div');
+                    noteElement.className = `note ${note.color}`;
+                    noteElement.dataset.id = note.id;
+                    
+                    // Make notes draggable
+                    noteElement.draggable = true;
+                    
+                    noteElement.innerHTML = `
+                        <div class="note-header">
+                            <div class="note-title" contenteditable="true">${note.title}</div>
+                            <div class="note-actions">
+                                <button class="btn action color-btn" title="Change color">
+                                    <i class="fas fa-palette"></i>
+                                </button>
+                                <button class="btn action copy-btn" title="Copy content">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                                <button class="btn action delete-btn" title="Delete">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="color-picker">
+                            <div class="color-option yellow" data-color="yellow"></div>
+                            <div class="color-option green" data-color="green"></div>
+                            <div class="color-option blue" data-color="blue"></div>
+                            <div class="color-option purple" data-color="purple"></div>
+                            <div class="color-option pink" data-color="pink"></div>
+                            <div class="color-option orange" data-color="orange"></div>
+                        </div>
+                        <textarea class="note-content" placeholder="Write your note here...">${note.content}</textarea>
+                        <div class="note-footer">
+                            <div>Created: ${note.created}</div>
+                            <div>Edited: ${note.lastEdited}</div>
+                        </div>
+                    `;
+                    
+                    groupNotesContainer.appendChild(noteElement);
+                });
+            }
+        }
+        
+        // Add event listeners to note elements
+        attachNoteEventListeners();
+    }
+    
+    function attachNoteEventListeners() {
+        // Delete button event listeners
+        document.querySelectorAll('.delete-btn').forEach(btn => {
+            btn.addEventListener('click', e => {
+                const noteId = e.target.closest('.note').dataset.id;
+                deleteNote(noteId);
+            });
+        });
+          // Copy button event listeners        document.querySelectorAll('.copy-btn').forEach(btn => {
+            btn.addEventListener('click', e => {
+                const note = e.target.closest('.note');
+                if (note) {
+                    const noteId = note.dataset.id;
+                    // Visual feedback - temporarily change icon to check mark
+                    const originalHTML = btn.innerHTML;
+                    btn.innerHTML = '<i class="fas fa-check"></i>';
+                    setTimeout(() => {
+                        btn.innerHTML = originalHTML;
+                    }, 1000);
+                    
+                    copyNoteContent(noteId);
+                }
+            });
+        });
+        
+        // Color button event listeners
+        document.querySelectorAll('.color-btn').forEach(btn => {
+            btn.addEventListener('click', e => {
+                const colorPicker = e.target.closest('.note').querySelector('.color-picker');
+                colorPicker.classList.toggle('active');
+                
+                // Close other color pickers
+                document.querySelectorAll('.color-picker.active').forEach(picker => {
+                    if (picker !== colorPicker) {
+                        picker.classList.remove('active');
+                    }
+                });
+                
+                // Stop propagation to prevent closing when clicking on the button itself
+                e.stopPropagation();
+            });
+        });
+        
+        // Drag and drop event listeners
+        document.querySelectorAll('.note').forEach(noteElem => {
+            noteElem.addEventListener('dragstart', e => {
+                noteElem.classList.add('dragging');
+                appState.draggedNote = noteElem.dataset.id;
+            });
+            
+            noteElem.addEventListener('dragend', e => {
+                noteElem.classList.remove('dragging');
+            });
+        });
+        
+        // Color option event listeners
+        document.querySelectorAll('.color-option').forEach(option => {
+            option.addEventListener('click', e => {
+                const noteElement = e.target.closest('.note');
+                const noteId = noteElement.dataset.id;
+                const color = e.target.dataset.color;
+                
+                // Update note color
+                noteElement.className = `note ${color}`;
+                
+                // Close color picker
+                const colorPicker = noteElement.querySelector('.color-picker');
+                colorPicker.classList.remove('active');
+                
+                // Update in state
+                updateNote(noteId, { color });
+                
+                // Stop propagation
+                e.stopPropagation();
+            });
+        });
+        
+        // Title edit event listeners
+        document.querySelectorAll('.note-title').forEach(title => {
+            title.addEventListener('blur', e => {
+                const noteId = e.target.closest('.note').dataset.id;
+                const newTitle = e.target.textContent.trim();
+                if (newTitle) {
+                    updateNote(noteId, { title: newTitle });
+                }
+            });
+            
+            title.addEventListener('keydown', e => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    e.target.blur();
+                }
+            });
+        });
+        
+        // Note content event listeners
+        document.querySelectorAll('.note-content').forEach(textarea => {
+            textarea.addEventListener('input', function() {
+                const noteId = this.closest('.note').dataset.id;
+                updateNote(noteId, { content: this.value });
+            });
+        });
+        
+        // Click outside to close color pickers
+        document.addEventListener('click', e => {
+            if (!e.target.closest('.color-btn') && !e.target.closest('.color-picker')) {
+                document.querySelectorAll('.color-picker.active').forEach(picker => {
+                    picker.classList.remove('active');
+                });
+            }
+        });
+    }
+      // Theme toggle button
+    themeToggleBtn.addEventListener('click', () => {
+        if (appState.theme === 'light') {
+            appState.theme = 'dark';
+            document.body.classList.add('dark-theme');
+            themeToggleBtn.innerHTML = '<i class="fas fa-sun"></i>';
+        } else {
+            appState.theme = 'light';
+            document.body.classList.remove('dark-theme');
+            themeToggleBtn.innerHTML = '<i class="fas fa-moon"></i>';
+        }
+        
+        localStorage.setItem('sticky-cp9-theme', appState.theme);
+    });
+    
+    // User profile button
+    if (userProfileBtn) {
+        userProfileBtn.addEventListener('click', () => {
+            showUserProfileDialog();
+        });
+    }
+    
+    // Cloud sync functionality
+    syncBtn.addEventListener('click', () => {
+        showSyncDialog();
+    });
+    
+    // Offline mode toggle functionality
+    offlineToggleBtn.addEventListener('click', () => {
+        toggleOfflineMode();
+    });
+    
+    // Helper functions
+    function generateId() {
+        return 'note_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    }
+    
+    function getCurrentDateTime() {
+        const now = new Date();
+        return now.toLocaleDateString() + ' ' + now.toLocaleTimeString();
+    }
+    
+    // Merge cloud notes with local notes
+    function mergeNotes(cloudNotes) {
+        // Preserve locally created notes
+        const mergedNotes = [...notes];
+        
+        // Add cloud notes that don't exist locally
+        cloudNotes.forEach(cloudNote => {
+            const existingIndex = mergedNotes.findIndex(note => note.id === cloudNote.id);
+            if (existingIndex === -1) {
+                // Note doesn't exist locally, add it
+                mergedNotes.push(cloudNote);
+            } else {
+                // Note exists locally, update with newer info
+                // For simplicity, we're assuming cloud is always newer
+                // A real app would compare timestamps
+                mergedNotes[existingIndex] = cloudNote;
+            }
+        });
+        
+        notes = mergedNotes;
+        saveNotes();
+        renderGroups();
+    }
+    
+    // Toast notifications
+    function showToast(message) {
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.textContent = message;
+        
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.classList.add('show');
+        }, 10);
+        
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => {
+                document.body.removeChild(toast);
+            }, 300);
+        }, 3000);
+    }
+    
+    // Confirmation dialog
+    function showConfirmDialog(title, message, confirmCallback) {
+        const dialog = document.createElement('div');
+        dialog.className = 'dialog-overlay';
+        
+        dialog.innerHTML = `
+            <div class="dialog">
+                <div class="dialog-header">
+                    <h3>${title}</h3>
+                    <button class="close-btn"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="dialog-body">
+                    <p>${message}</p>
+                </div>
+                <div class="dialog-footer">
+                    <button class="btn secondary cancel-btn">Cancel</button>
+                    <button class="btn primary confirm-btn">Confirm</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(dialog);
+        
+        // Add event listeners to close button
+        const closeBtn = dialog.querySelector('.close-btn');
+        closeBtn.addEventListener('click', () => {
+            document.body.removeChild(dialog);
+        });
+        
+        // Add event listeners to cancel button
+        const cancelBtn = dialog.querySelector('.cancel-btn');
+        cancelBtn.addEventListener('click', () => {
+            document.body.removeChild(dialog);
+        });
+        
+        // Add event listeners to confirm button
+        const confirmBtn = dialog.querySelector('.confirm-btn');
+        confirmBtn.addEventListener('click', () => {
+            confirmCallback();
+            document.body.removeChild(dialog);
+        });
+    }
+    
+    // User profile dialog
+    function showUserProfileDialog() {
+        if (!authManager.isAuthenticated) {
+            showToast('You are not signed in');
+            return;
+        }
+        
+        const profile = authManager.userProfile;
+        if (!profile) return;
+        
+        const dialog = document.createElement('div');
+        dialog.className = 'dialog-overlay';
+        
+        dialog.innerHTML = `
+            <div class="dialog">
+                <div class="dialog-header">
+                    <h3>User Profile</h3>
+                    <button class="close-btn"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="dialog-body user-profile-dialog">
+                    <div class="user-avatar-large">
+                        <img src="${profile.imageUrl}" alt="${profile.name}" />
+                    </div>
+                    <div class="user-info">
+                        <div class="user-name">${profile.name}</div>
+                        <div class="user-email">${profile.email}</div>
+                        <div class="user-provider">Signed in with ${authManager.provider === 'google' ? 'Google' : 'Microsoft'}</div>
+                    </div>
+                </div>
+                <div class="dialog-footer">
+                    <button class="btn danger sign-out-btn">Sign Out</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(dialog);
+        
+        // Add event listeners to close button
+        const closeBtn = dialog.querySelector('.close-btn');
+        closeBtn.addEventListener('click', () => {
+            document.body.removeChild(dialog);
+        });
+        
+        // Add event listeners to sign out button
+        const signOutBtn = dialog.querySelector('.sign-out-btn');
+        signOutBtn.addEventListener('click', () => {
+            authManager.signOut();
+            document.body.removeChild(dialog);
+        });
+    }
+    
+    // Sync dialog
+    function showSyncDialog() {
+        const dialog = document.createElement('div');
+        dialog.className = 'dialog-overlay';
+        
+        dialog.innerHTML = `
+            <div class="dialog">
+                <div class="dialog-header">
+                    <h3>Sync Notes</h3>
+                    <button class="close-btn"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="dialog-body">
+                    ${authManager.isAuthenticated ? `
+                        <p>Your notes are currently synced with ${authManager.provider === 'google' ? 'Google Drive' : 'OneDrive'}.</p>
+                        <button class="btn primary sync-now-btn">Sync Now</button>
+                    ` : `
+                        <p>Sign in to sync your notes to the cloud.</p>
+                        <div class="cloud-providers">
+                            <button class="cloud-provider google-provider">
+                                <i class="fab fa-google"></i>
+                                <span>Google Drive</span>
+                            </button>
+                            <button class="cloud-provider microsoft-provider">
+                                <i class="fab fa-microsoft"></i>
+                                <span>Microsoft OneDrive</span>
+                            </button>
+                        </div>
+                    `}
+                </div>
+                <div class="dialog-footer">
+                    <button class="btn secondary cancel-btn">Cancel</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(dialog);
+        
+        // Add event listeners to close button
+        const closeBtn = dialog.querySelector('.close-btn');
+        closeBtn.addEventListener('click', () => {
+            document.body.removeChild(dialog);
+        });
+        
+        // Add event listeners to cancel button
+        const cancelBtn = dialog.querySelector('.cancel-btn');
+        cancelBtn.addEventListener('click', () => {
+            document.body.removeChild(dialog);
+        });
+        
+        // Add event listeners to cloud providers
+        if (!authManager.isAuthenticated) {
+            const googleProvider = dialog.querySelector('.google-provider');
+            googleProvider.addEventListener('click', () => {
+                authManager.signInWithGoogle();
+                document.body.removeChild(dialog);
+            });
+            
+            const microsoftProvider = dialog.querySelector('.microsoft-provider');
+            microsoftProvider.addEventListener('click', () => {
+                authManager.signInWithMicrosoft();
+                document.body.removeChild(dialog);
+            });
+        } else {
+            // Add event listener for sync now button
+            const syncNowBtn = dialog.querySelector('.sync-now-btn');
+            if (syncNowBtn) {
+                syncNowBtn.addEventListener('click', () => {
+                    syncManager.syncNotes(notes)
+                        .then(() => {
+                            showToast(`Notes synced to ${authManager.provider === 'google' ? 'Google Drive' : 'OneDrive'}`);
+                            appState.synced = true;
+                            appState.lastSyncTime = getCurrentDateTime();
+                            localStorage.setItem('sticky-cp9-last-sync-time', appState.lastSyncTime);
+                            document.body.removeChild(dialog);
+                        })
+                        .catch(error => {
+                            console.error('Sync failed', error);
+                            showToast('Failed to sync notes');
+                        });
+                });
+            }
+        }
+    }
+    
+    // Initialize by rendering groups (which includes notes)
+    renderGroups();
+    
+    // Create a default note if there are none
+    if (notes.length === 0) {
+        createNote({
+            title: 'Welcome to StickyCP9!',
+            content: 'This is your first note. You can edit this text, change the title above, and even change the color using the palette button.\n\nTo copy the content of any note, click the copy button in the top-right corner.\n\nUse the moon icon to toggle between light and dark themes. Use the cloud icon to sync your notes to Google Drive or OneDrive.\n\nTry creating different groups and dragging notes between them!\n\nClick the + button to create a new note.',
+            color: 'yellow',
+            groupId: 'default'
+        });
+    }
+});

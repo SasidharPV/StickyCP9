@@ -1,0 +1,1211 @@
+:root {
+    --bg-color: #f5f5f5;
+    --text-color: #333;
+    --toolbar-bg: #4e54c8;
+    --toolbar-text: white;
+    --note-bg: #fff;
+    --note-text: #333;
+    --note-hover: #fafafa;
+    --btn-bg: #ffffff;
+    --btn-text: #4e54c8;
+    --btn-hover: #f0f0f0;
+    --toast-bg: #323232;
+    --toast-text: white;
+    --dialog-bg: #ffffff;
+    --dialog-text: #333;
+    --dialog-border: #ddd;
+    
+    /* Note colors - light theme */
+    --yellow-bg: #fff9c4;
+    --green-bg: #c8e6c9;
+    --blue-bg: #bbdefb;
+    --purple-bg: #e1bee7;
+    --pink-bg: #f8bbd0;
+    --orange-bg: #ffe0b2;
+}
+
+body.dark-theme {
+    --bg-color: #121212;
+    --text-color: #e0e0e0;
+    --toolbar-bg: #2c2c54;
+    --toolbar-text: #e0e0e0;
+    --note-bg: #1e1e1e;
+    --note-text: #e0e0e0;
+    --note-hover: #2a2a2a;
+    --btn-bg: #2c2c54;
+    --btn-text: #e0e0e0;
+    --btn-hover: #3b3b63;
+    --toast-bg: #3a3a3a;
+    --toast-text: #e0e0e0;
+    --dialog-bg: #2a2a2a;
+    --dialog-text: #e0e0e0;
+    --dialog-border: #444;
+    
+    /* Note colors - dark theme */
+    --yellow-bg: #725b00;
+    --green-bg: #1b5e20;
+    --blue-bg: #0d47a1;
+    --purple-bg: #4a148c;
+    --pink-bg: #880e4f;
+    --orange-bg: #e65100;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', sans-serif;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    min-height: 100vh;
+    height: 100vh;
+    margin: 0;
+    padding: 0;
+    overflow: auto;
+}
+
+#notes-container {
+    flex: 1;
+    overflow: visible;
+    padding: 10px;
+}
+
+.app-container {
+    width: 100%;
+    max-width: 100%;
+    margin: 0 auto;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+.toolbar {
+    background-color: var(--toolbar-bg);
+    color: var(--toolbar-text);
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin-bottom: 10px;
+    flex-shrink: 0;
+}
+
+.app-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.toolbar-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.btn {
+    border: none;
+    border-radius: 4px;
+    padding: 10px 15px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.2s ease;
+}
+
+.btn.primary {
+    background-color: var(--btn-bg);
+    color: var(--btn-text);
+}
+
+.btn.primary:hover {
+    background-color: var(--btn-hover);
+}
+
+.btn.secondary {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: var(--toolbar-text);
+    padding: 8px;
+}
+
+.btn.secondary:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.user-btn {
+    padding: 4px !important;
+    overflow: hidden;
+    border-radius: 50%;
+}
+
+.user-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.btn.action {
+    background-color: transparent;
+    font-size: 0.8rem;
+}
+
+.btn.action:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+#notes-container {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 60px);
+    overflow-y: auto;
+    padding: 0;
+}
+
+.note {
+    background-color: var(--note-bg);
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    padding: 15px;
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    cursor: grab;
+    margin-bottom: 15px;
+    width: auto;
+    transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
+}
+
+.note-header {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    margin-bottom: 10px;
+    gap: 5px;
+}
+
+.drag-handle {
+    cursor: grab;
+    color: #999;
+    padding: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.drag-handle:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+    color: var(--toolbar-bg);
+    transform: scale(1.05);
+}
+
+.dragging .drag-handle {
+    cursor: grabbing;
+}
+
+.note-title {
+    font-weight: 600;
+    color: var(--note-text);
+    padding: 5px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    background-color: transparent;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+.note-title:focus {
+    outline: none;
+    border-color: var(--dialog-border);
+    white-space: normal;
+}
+
+.note-actions {
+    display: flex;
+    gap: 5px;
+    flex-shrink: 0;
+}
+
+.note-content {
+    flex-grow: 1;
+    resize: none;
+    border: none;
+    padding: 5px;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    border-radius: 4px;
+    background-color: transparent;
+    color: var(--note-text);
+}
+
+.note-content:focus {
+    outline: none;
+    background-color: var(--note-hover);
+}
+
+.note-footer {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 10px;
+    font-size: 0.8rem;
+    color: var(--text-color);
+    opacity: 0.7;
+}
+
+.color-picker {
+    position: absolute;
+    top: 45px;
+    right: 15px;
+    background-color: var(--dialog-bg);
+    border-radius: 4px;
+    padding: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    display: none;
+    flex-wrap: wrap;
+    gap: 8px;
+    z-index: 10;
+    border: 1px solid var(--dialog-border);
+    width: 90px;
+}
+
+.color-picker.active {
+    display: flex;
+}
+
+.color-option {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s ease;
+}
+
+.color-option:hover {
+    transform: scale(1.2);
+}
+
+/* Explicitly set color for each color option */
+.color-option.yellow {
+    background-color: var(--yellow-bg);
+}
+
+.color-option.green {
+    background-color: var(--green-bg);
+}
+
+.color-option.blue {
+    background-color: var(--blue-bg);
+}
+
+.color-option.purple {
+    background-color: var(--purple-bg);
+}
+
+.color-option.pink {
+    background-color: var(--pink-bg);
+}
+
+.color-option.orange {
+    background-color: var(--orange-bg);
+}
+
+/* Note color variations */
+.note.yellow {
+    background-color: var(--yellow-bg);
+}
+
+.note.green {
+    background-color: var(--green-bg);
+}
+
+.note.blue {
+    background-color: var(--blue-bg);
+}
+
+.note.purple {
+    background-color: var(--purple-bg);
+}
+
+.note.pink {
+    background-color: var(--pink-bg);
+}
+
+.note.orange {
+    background-color: var(--orange-bg);
+}
+
+/* Toast notification */
+.toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: var(--toast-bg);
+    color: var(--toast-text);
+    padding: 12px 20px;
+    border-radius: 4px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: 1000;
+    animation: fadeIn 0.3s, fadeOut 0.3s 2.7s forwards;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; bottom: 0; }
+    to { opacity: 1; bottom: 20px; }
+}
+
+@keyframes fadeOut {
+    from { opacity: 1; bottom: 20px; }
+    to { opacity: 0; bottom: 0; }
+}
+
+/* Modal Dialog for Cloud Sync */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s;
+}
+
+/* Dialog Overlay - used for confirmation dialogs and more */
+.dialog-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    animation: fadeIn 0.2s ease forwards;
+    backdrop-filter: blur(2px);
+}
+
+/* Dialog styles */
+.dialog {
+    background-color: var(--dialog-bg);
+    padding: 25px;
+    border-radius: 12px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
+    position: relative;
+    color: var(--dialog-text);
+    animation: dialog-pop 0.3s ease-out forwards;
+    transform-origin: center;
+}
+
+@keyframes dialog-pop {
+    0% { 
+        transform: scale(0.8); 
+        opacity: 0; 
+    }
+    100% { 
+        transform: scale(1); 
+        opacity: 1; 
+    }
+}
+
+.dialog-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.dialog-header h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.dialog-header .close-btn {
+    background: none;
+    border: none;
+    color: #f44336;
+    font-size: 16px;
+    cursor: pointer;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+    padding: 0;
+}
+
+.dialog-header .close-btn:hover {
+    background-color: rgba(244, 67, 54, 0.1);
+    transform: scale(1.1);
+}
+
+.dialog-body {
+    margin-bottom: 20px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.dialog-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 25px;
+}
+
+.dialog-footer .btn {
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-weight: 500;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    border: none;
+    cursor: pointer;
+}
+
+.dialog-footer .btn.primary {
+    background-color: var(--toolbar-bg);
+    color: #ffffff;
+}
+
+.dialog-footer .btn.primary:hover {
+    background-color: var(--toolbar-bg-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+}
+
+.dialog-footer .btn.secondary {
+    background-color: var(--btn-bg);
+    color: var(--btn-text);
+}
+
+.dialog-footer .btn.secondary:hover {
+    background-color: var(--btn-hover);
+    transform: translateY(-2px);
+}
+
+.dialog-footer .btn.danger {
+    background-color: #f44336;
+    color: white;
+}
+
+.dialog-footer .btn.danger:hover {
+    background-color: #d32f2f;
+    transform: translateY(-2px);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+}
+
+.modal-container {
+    background-color: var(--dialog-bg);
+    padding: 25px;
+    border-radius: 8px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    position: relative;
+    color: var(--dialog-text);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.2rem;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    color: var(--text-color);
+    opacity: 0.7;
+}
+
+.modal-body {
+    margin-bottom: 20px;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.modal-footer button {
+    padding: 8px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.btn-cancel {
+    background-color: var(--btn-bg);
+    color: var(--text-color);
+}
+
+.btn-cancel:hover {
+    background-color: var(--btn-hover);
+}
+
+.btn-primary {
+    background-color: var(--toolbar-bg);
+    color: var(--toolbar-text);
+}
+
+.btn-confirm {
+    background-color: #f44336;
+}
+
+.btn-confirm:hover {
+    background-color: #d32f2f;
+}
+
+/* Development mode banner */
+.dev-mode-banner {
+    background-color: #ff9800;
+    color: #000;
+    padding: 10px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    font-size: 0.9rem;
+}
+
+.dev-mode-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.dev-mode-actions {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.dev-mode-actions a {
+    color: #000;
+    text-decoration: underline;
+    font-weight: 500;
+}
+
+.dev-mode-actions button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+.dev-mode-actions button:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Setup instructions */
+.setup-instructions .modal-body {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.setup-step {
+    margin-bottom: 20px;
+}
+
+.setup-step h4 {
+    margin-bottom: 10px;
+    color: var(--toolbar-bg);
+}
+
+.setup-step code {
+    background-color: rgba(0, 0, 0, 0.1);
+    padding: 2px 5px;
+    border-radius: 3px;
+    font-family: monospace;
+}
+
+.setup-step ol {
+    padding-left: 20px;
+}
+
+.setup-step li {
+    margin-bottom: 5px;
+}
+
+.setup-step a {
+    color: var(--toolbar-bg);
+}
+
+/* Cloud provider selection */
+.cloud-providers {
+    display: flex;
+    gap: 15px;
+    margin: 20px 0;
+}
+
+.cloud-provider {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    padding: 15px;
+    border-radius: 8px;
+    border: 2px solid transparent;
+    transition: all 0.2s;
+}
+
+.cloud-provider:hover {
+    background-color: var(--note-hover);
+}
+
+.cloud-provider.selected {
+    border-color: var(--toolbar-bg);
+}
+
+.cloud-provider-icon {
+    font-size: 2rem;
+    color: var(--toolbar-bg);
+}
+
+.cloud-provider-name {
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+/* Sign-in page styles */
+.sign-in-page {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #4e54c8, #8f94fb);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.3s ease;
+}
+
+.sign-in-container {
+    background-color: var(--dialog-bg);
+    border-radius: 10px;
+    box-shadow: 0 5px 25px rgba(0, 0, 0, 0.3);
+    width: 100%;
+    max-width: 500px;
+    padding: 30px;
+    color: var(--dialog-text);
+}
+
+.sign-in-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.app-logo {
+    font-size: 3rem;
+    color: #4e54c8;
+    margin-bottom: 15px;
+}
+
+.sign-in-header h1 {
+    margin-bottom: 10px;
+    font-size: 24px;
+}
+
+.sign-in-header p {
+    color: #666;
+    font-size: 16px;
+}
+
+.sign-in-options {
+    margin-bottom: 20px;
+}
+
+.sign-in-options h3 {
+    margin-bottom: 20px;
+    text-align: center;
+    font-weight: normal;
+    font-size: 18px;
+}
+
+.auth-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.auth-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 12px 20px;
+    border-radius: 5px;
+    border: 1px solid #ddd;
+    background-color: white;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.google-btn {
+    border-color: #ddd;
+}
+
+.google-btn:hover {
+    background-color: #f1f1f1;
+}
+
+.google-btn i {
+    color: #4285F4;
+}
+
+.microsoft-btn {
+    border-color: #ddd;
+}
+
+.microsoft-btn:hover {
+    background-color: #f1f1f1;
+}
+
+.microsoft-btn i {
+    color: #00a4ef;
+}
+
+.divider {
+    display: flex;
+    align-items: center;
+    margin: 20px 0;
+}
+
+.divider::before, .divider::after {
+    content: "";
+    flex: 1;
+    border-bottom: 1px solid #ddd;
+}
+
+.divider span {
+    padding: 0 10px;
+    color: #999;
+    font-size: 14px;
+}
+
+.offline-btn {
+    background-color: #f5f5f5;
+    border-color: #ddd;
+    width: 100%;
+}
+
+.offline-btn:hover {
+    background-color: #eaeaea;
+}
+
+.offline-btn i {
+    color: #555;
+}
+
+.sign-in-footer {
+    text-align: center;
+    font-size: 13px;
+    color: #999;
+}
+
+/* Animation for sign-in page */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Fade out animation */
+@keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+/* App content transition */
+.app-content {
+    opacity: 0;
+    animation: fadeIn 0.5s ease forwards;
+    height: 100vh;
+}
+
+.app-content.visible {
+    opacity: 1;
+}
+
+/* Offline mode styles */
+.offline-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    border-radius: 12px;
+    background-color: #f44336;
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+    margin-left: 10px;
+}
+
+.online .offline-indicator {
+    background-color: #4CAF50;
+}
+
+/* User profile dropdown menu */
+.user-dropdown {
+    position: absolute;
+    top: 60px;
+    right: 10px;
+    background-color: var(--dialog-bg);
+    border: 1px solid var(--dialog-border);
+    border-radius: 5px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+    padding: 10px 0;
+    z-index: 100;
+    min-width: 200px;
+    display: none;
+}
+
+.user-dropdown.visible {
+    display: block;
+    animation: fadeIn 0.2s ease;
+}
+
+.user-dropdown-item {
+    padding: 10px 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+}
+
+.user-dropdown-item:hover {
+    background-color: var(--btn-hover);
+}
+
+.user-dropdown-item i {
+    width: 20px;
+}
+
+/* Status indicator for offline toggle */
+#offline-toggle.active {
+    background-color: #f44336;
+    color: white;
+}
+
+body.dark-theme #offline-toggle.active {
+    background-color: #b71c1c;
+}
+
+/* Note groups styles */
+.groups-container {
+    display: flex;
+    flex-wrap: wrap;
+    overflow-y: auto;
+    padding: 10px;
+    gap: 20px;
+    min-height: calc(100vh - 100px);
+    height: calc(100vh - 100px);
+    align-items: flex-start;
+    scrollbar-width: thin;
+    scrollbar-color: var(--toolbar-bg) var(--bg-color);
+    -webkit-overflow-scrolling: touch; /* For smooth scrolling on iOS */
+    justify-content: flex-start;
+    align-content: flex-start;
+    width: 100%;
+}
+
+/* Customize the scrollbar for WebKit browsers */
+.groups-container::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+}
+
+.groups-container::-webkit-scrollbar-track {
+    background: var(--bg-color);
+    border-radius: 4px;
+}
+
+.groups-container::-webkit-scrollbar-thumb {
+    background-color: var(--toolbar-bg);
+    border-radius: 4px;
+}
+
+.group-toolbar {
+    display: flex;
+    justify-content: flex-start;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--dialog-border);
+}
+
+.group {
+    flex: 0 1 280px;
+    min-width: 250px;
+    max-width: 350px;
+    background-color: var(--dialog-bg);
+    border-radius: 10px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    height: 500px; /* Fixed height for consistency */
+    max-height: calc(100vh - 150px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    transition: all 0.3s ease;
+}
+
+.group-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding: 8px 0;
+    border-bottom: 2px solid var(--toolbar-bg);
+    position: sticky;
+    top: 0;
+    background-color: var(--dialog-bg);
+    z-index: 10;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.group-title {
+    font-weight: bold;
+    font-size: 16px;
+    padding: 5px;
+    border-radius: 4px;
+    flex: 1;
+}
+
+.group-title[contenteditable="true"]:focus {
+    outline: none;
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.group-actions {
+    display: flex;
+    gap: 5px;
+    z-index: 10;
+}
+
+.delete-group-btn {
+    color: #f44336;
+    transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.delete-group-btn:hover {
+    color: #b71c1c;
+    transform: scale(1.1);
+}
+
+.group-notes {
+    min-height: 50px;
+    flex: 1;
+    overflow-y: auto;
+    padding: 5px;
+    scrollbar-width: thin;
+}
+
+.group-notes::-webkit-scrollbar {
+    width: 6px;
+}
+
+.group-notes::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.group-notes::-webkit-scrollbar-thumb {
+    background-color: rgba(78, 84, 200, 0.2);
+    border-radius: 3px;
+}
+
+/* Empty group placeholder */
+.group-notes.empty::after {
+    content: 'Drag notes here';
+    display: block;
+    text-align: center;
+    padding: 20px;
+    color: #999;
+    font-style: italic;
+    border: 2px dashed #ddd;
+    border-radius: 5px;
+    margin: 10px 0;
+}
+
+/* Make the "Add Note" button stick to the bottom */
+.add-note-to-group {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    background-color: var(--btn-bg);
+    margin-top: 10px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Drag and drop styles */
+.note.dragging {
+    opacity: 0.8;
+    transform: scale(0.95);
+    cursor: grabbing;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+    z-index: 1000;
+    border: 2px dashed var(--toolbar-bg);
+}
+
+.group-notes.drag-over {
+    background-color: rgba(78, 84, 200, 0.15);
+    border-radius: 8px;
+    padding: 10px;
+    border: 2px dashed var(--toolbar-bg);
+    animation: pulse 1.5s infinite alternate;
+    min-height: 100px;
+}
+
+@keyframes pulse {
+    from { background-color: rgba(78, 84, 200, 0.05); }
+    to { background-color: rgba(78, 84, 200, 0.2); }
+}
+
+/* Draggable note styles */
+.note {
+    cursor: grab;
+}
+
+.note:active {
+    cursor: grabbing;
+}
+
+/* Add group button */
+.add-group-btn {
+    flex: 0 1 280px;
+    min-width: 250px;
+    max-width: 350px;
+    height: 100px;
+    border: 2px dashed var(--dialog-border);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    color: var(--text-color);
+    background-color: transparent;
+    cursor: pointer;
+    margin-bottom: 20px;
+    transition: all 0.3s ease;
+    gap: 10px;
+}
+
+.add-group-btn:hover {
+    background-color: var(--btn-hover);
+    border-color: var(--toolbar-bg);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.add-group-btn i {
+    font-size: 24px;
+}
+
+/* Responsive styles */
+@media (max-width: 1400px) {
+    .group, .add-group-btn {
+        flex: 0 1 calc(33.33% - 20px);
+        min-width: 250px;
+    }
+}
+
+@media (max-width: 1200px) {
+    .group, .add-group-btn {
+        flex: 0 1 calc(50% - 20px);
+        min-width: 240px;
+    }
+}
+
+@media (max-width: 768px) {
+    .group, .add-group-btn {
+        flex: 0 1 calc(50% - 15px);
+        min-width: 230px;
+    }
+    
+    .app-container {
+        padding: 5px;
+    }
+    
+    .toolbar {
+        padding: 10px;
+    }
+    
+    .toolbar-actions {
+        gap: 5px;
+    }
+    
+    .groups-container {
+        gap: 15px;
+    }
+}
+
+@media (max-width: 600px) {
+    .toolbar {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .toolbar-actions {
+        margin-top: 10px;
+        width: 100%;
+        justify-content: space-between;
+    }
+}
+
+@media (max-width: 480px) {
+    .group, .add-group-btn {
+        flex: 0 1 100%;
+        min-width: 100%;
+    }
+    
+    .note {
+        min-height: 150px;
+    }
+}
