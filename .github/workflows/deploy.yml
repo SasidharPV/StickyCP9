@@ -3,9 +3,9 @@ name: Deploy to GitHub Pages
 
 # Controls when the workflow will run
 on:
-  # Triggers the workflow on push events to the main branch
+  # Triggers the workflow on push events to the v1 branch
   push:
-    branches: [ main ]
+    branches: [ v1 ]
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -21,11 +21,9 @@ jobs:
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE
       - name: Checkout repository
-        uses: actions/checkout@v2
-
-      # Deploy to GitHub Pages
+        uses: actions/checkout@v2      # Deploy to GitHub Pages
       - name: Deploy to GitHub Pages
-        uses: JamesIves/github-pages-deploy-action@4.1.4
+        uses: JamesIves/github-pages-deploy-action@v4
         with:
           branch: gh-pages  # The branch the action should deploy to
           folder: .         # The folder the action should deploy

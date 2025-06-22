@@ -2,6 +2,10 @@
 
 A sleek, modern sticky notes application that runs in your browser with built-in copy functionality and cloud sync for each note.
 
+## Live Demo
+
+Try the application live at [https://SasidharPV.github.io/StickyCP9/](https://SasidharPV.github.io/StickyCP9/)
+
 ## Features
 
 - Create, edit, and delete sticky notes
@@ -19,6 +23,15 @@ A sleek, modern sticky notes application that runs in your browser with built-in
 
 1. Double-click the `run_sticky_notes.bat` file to open the application in your default browser
 2. Alternatively, you can open the `index.html` file directly in any web browser
+
+### Deploying to GitHub Pages
+
+1. Make your changes to the application
+2. Run the `deploy_to_github_pages.bat` file
+3. Enter a commit message when prompted (or press Enter for the default message)
+4. The script will push your changes to GitHub
+5. GitHub Actions will automatically deploy your updated site
+6. Once complete, your application will be available at: https://SasidharPV.github.io/StickyCP9/
 
 ### Using the Application
 
