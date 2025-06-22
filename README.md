@@ -6,6 +6,8 @@ A sleek, modern sticky notes application that runs in your browser with built-in
 
 Try the application live at [https://SasidharPV.github.io/StickyCP9/](https://SasidharPV.github.io/StickyCP9/)
 
+*Note: It may take a few minutes for the deployed version to become available after the initial setup.*
+
 ## Features
 
 - Create, edit, and delete sticky notes
